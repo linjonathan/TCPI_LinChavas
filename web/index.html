@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tropical Cyclone Potential Intensity — Interactive Sounding</title>
+<style>
+  :root{
+    --bg:#f7f9fb; --panel:#ffffff; --ink:#16222e; --muted:#5b6b78;
+    --line:#e2e8ee; --accent:#0e7c9b; --accent2:#0a5d75;
+    --warm:#d24b3e; --cool:#1f8a5b; --parcel:#b1239e; --sea:#1763b8; --gray:#7e8c98;
+    --shadow:0 1px 3px rgba(20,40,60,.06),0 6px 20px rgba(20,40,60,.06);
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 20px 80px}
+  header.hero{margin-bottom:20px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  h1{font-size:clamp(25px,3.2vw,36px);line-height:1.12;margin:6px 0 8px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:15.5px;max-width:780px}
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+  @media(max-width:940px){.grid{grid-template-columns:1fr}}
+  .col{display:flex;flex-direction:column;gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+  .card .hd{padding:13px 18px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px;
+    display:flex;align-items:center;justify-content:space-between}
+  .card .bd{padding:16px 18px}
+  .ctl{margin-bottom:15px}.ctl:last-child{margin-bottom:0}
+  .ctl label{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:7px}
+  .ctl label .val{color:var(--accent);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent);height:4px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:60px;padding:7px 8px;font-size:12.5px;border:1px solid var(--line);
+    background:#fff;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:600;transition:.12s}
+  .seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .seg button:hover{border-color:var(--accent)}
+  .presets{display:flex;gap:6px;flex-wrap:wrap}
+  .presets button{padding:6px 11px;font-size:12.5px;border:1px solid var(--line);background:#fff;
+    border-radius:20px;cursor:pointer;color:var(--ink);font-weight:600;transition:.12s}
+  .presets button:hover{border-color:var(--accent);color:var(--accent)}
+  .switchrow{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:12px}
+  .switch{position:relative;width:42px;height:24px;flex:none}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#cfd8e0;border-radius:24px;transition:.2s;cursor:pointer}
+  .slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  .switch input:checked+.slider{background:var(--accent)}
+  .switch input:checked+.slider:before{transform:translateX(18px)}
+
+  /* sounding hero */
+  canvas{width:100%;display:block}
+  #skewt{cursor:crosshair}
+  .legend{display:flex;gap:13px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .swatch{width:17px;height:0;border-top-width:3px;border-top-style:solid;display:inline-block}
+  .swatch.dash{border-top-style:dashed}
+  .box{width:13px;height:11px;border-radius:3px;display:inline-block}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+
+  /* results */
+  .result{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:12px}
+  @media(max-width:560px){.result{grid-template-columns:1fr 1fr}}
+  .vmax-card{grid-row:1/3;border-radius:12px;padding:15px 17px;color:#fff;transition:.25s;display:flex;flex-direction:column;justify-content:center}
+  .vmax-card .lab{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.92}
+  .vmax-card .big{font-size:38px;font-weight:800;line-height:1;margin:7px 0 2px;font-variant-numeric:tabular-nums}
+  .vmax-card .units{font-size:13.5px;opacity:.92;font-variant-numeric:tabular-nums}
+  .cat-badge{display:inline-block;margin-top:9px;background:rgba(255,255,255,.22);padding:4px 11px;border-radius:20px;font-weight:700;font-size:12.5px;align-self:flex-start}
+  .mini{background:#f4f7fa;border:1px solid var(--line);border-radius:11px;padding:10px 13px}
+  .mini .l{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .mini .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+  .mini .v small{font-size:11.5px;color:var(--muted);font-weight:600}
+  .flag{font-size:12.5px;color:var(--warm);font-weight:600;margin-top:10px;min-height:14px}
+
+  /* explainer */
+  .explain{margin-top:26px}
+  .explain h2{font-size:24px;letter-spacing:-.01em;margin:30px 0 10px}
+  .explain h3{font-size:17px;margin:22px 0 6px}
+  .explain p{color:#2b3a47;max-width:820px}
+  .eq{background:#0f2230;color:#e8f3f7;border-radius:12px;padding:15px 20px;margin:14px 0;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:15px;overflow-x:auto;box-shadow:var(--shadow)}
+  .eq .c{color:#7fd1e8}
+  .terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+  .term{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+  .term .sym{font-size:18px;font-weight:800;color:var(--accent2);font-family:"SF Mono",ui-monospace,monospace}
+  .term .nm{font-weight:700;margin:3px 0 4px;font-size:14px}
+  .term p{font-size:13px;color:var(--muted);margin:0;max-width:none}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:10px 0;box-shadow:var(--shadow)}
+  details summary{padding:14px 18px;font-weight:700;cursor:pointer;font-size:15px;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details summary::before{content:"+ ";color:var(--accent);font-weight:800}
+  details[open] summary::before{content:"– "}
+  details .inner{padding:0 18px 16px}
+  .ref{font-size:13px;color:var(--muted);max-width:820px}.ref a{color:var(--accent)}
+  .foot{margin-top:30px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+  .pill{display:inline-block;background:#eef4f7;color:var(--accent2);border-radius:6px;padding:1px 7px;font-size:12px;font-weight:700}
+  .caption{font-size:12.5px;color:var(--muted);margin-top:8px}
+  /* stats strip */
+  .stats{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+  .stat{background:#f4f7fa;border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12px}
+  .stat b{font-variant-numeric:tabular-nums;color:var(--ink)}
+  .stat span{color:var(--muted);font-weight:600}
+  /* export button */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:12.5px;font-weight:700;
+    border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:9px;cursor:pointer;transition:.12s}
+  .btn:hover{background:var(--accent2);border-color:var(--accent2)}
+  .btn:disabled{opacity:.6;cursor:default}
+  .hdright{display:flex;align-items:center;gap:10px}
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(15,34,48,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
+  .modal.on{display:flex}
+  .modal .panel{background:#fff;border-radius:14px;max-width:min(1100px,94vw);max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal .mhd{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--line);font-weight:700}
+  .modal .mbd{padding:14px 18px}
+  .modal img{width:100%;height:auto;border:1px solid var(--line);border-radius:8px}
+  .modal .x{cursor:pointer;border:none;background:#eef2f5;border-radius:8px;width:30px;height:30px;font-size:16px;font-weight:700;color:#566}
+  .mrow{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  .mrow input{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:inherit;font-size:12.5px;width:230px}
+  .spinner{width:18px;height:18px;border:2.5px solid #cfe0ea;border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .note{font-size:12.5px;color:var(--muted)}
+  .note code{background:#f1f4f6;padding:1px 5px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Tropical Meteorology · Interactive Sounding</div>
+  <h1>How Potential Intensity is Read from a Sounding</h1>
+  <p class="sub">Potential intensity (PI) is a hurricane's speed limit — the maximum near-surface wind
+  speed a tropical cyclone could reach in a given ocean and atmosphere (Emanuel 1986; Rousseau-Rizzi &amp;
+  Emanuel 2019). The idea is elegant: a hurricane runs as a heat engine on the warmth of the sea, and the
+  energy it can draw from the air–sea temperature and moisture contrast sets a ceiling on how strong its
+  winds can get. This tool computes PI from an editable sounding and draws the construction behind it —
+  adjust any control and the sounding, and every quantity on it, updates instantly.</p>
+</header>
+
+<div class="grid">
+
+  <!-- LEFT: controls -->
+  <div class="col">
+    <div class="card">
+      <div class="hd">Environment</div>
+      <div class="bd">
+        <div class="ctl">
+          <label>Sea-surface temperature <span class="val"><span id="sstv">30.0</span> °C</span></label>
+          <input id="sst" type="range" min="18" max="34" step="0.5" value="30">
+        </div>
+        <div class="ctl">
+          <label>Mean sea-level pressure <span class="val"><span id="mslpv">1010</span> hPa</span></label>
+          <input id="mslp" type="range" min="990" max="1020" step="1" value="1010">
+        </div>
+        <div class="ctl">
+          <label style="margin-bottom:9px">Starting profile</label>
+          <div class="presets" id="presets"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">Theory options</div>
+      <div class="bd">
+        <div class="switchrow"><span>Dissipative heating</span>
+          <label class="switch"><input id="diss" type="checkbox" checked><span class="slider"></span></label></div>
+        <div class="ctl">
+          <label>Exchange ratio <span class="val">C<sub>k</sub>/C<sub>D</sub> = <span id="ckcdv">0.90</span></span></label>
+          <input id="ckcd" type="range" min="0.5" max="1.2" step="0.05" value="0.9">
+        </div>
+        <div class="ctl">
+          <label style="margin-bottom:9px">Parcel ascent</label>
+          <div class="seg" id="ascent">
+            <button data-v="0" class="on">Reversible</button>
+            <button data-v="1">Pseudo-adiabatic</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">Sounding <span style="font-weight:500;color:var(--muted);font-size:12px">editable · °C</span></div>
+      <div class="bd" style="padding:6px 10px 10px">
+        <div style="max-height:300px;overflow:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums">
+            <thead><tr>
+              <th style="font-size:11px;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)">P</th>
+              <th style="font-size:11px;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)">Temp</th>
+              <th style="font-size:11px;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)">Dewpt</th>
+            </tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: sounding hero + results -->
+  <div class="col">
+    <div class="card">
+      <div class="hd">Sounding &amp; potential-intensity construction
+        <div class="hdright">
+          <span class="pill" id="iflpill">solved</span>
+          <button class="btn" id="exportBtn" title="Render the full SounderPy figure (needs the local backend running)">⬇ SounderPy figure</button>
+        </div>
+      </div>
+      <div class="bd">
+        <canvas id="skewt" width="680" height="620" aria-label="Annotated Skew-T log-P sounding"></canvas>
+        <div class="stats" id="stats"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">Result</div>
+      <div class="bd">
+        <div class="result">
+          <div class="vmax-card" id="vmaxCard">
+            <div class="lab">Max potential wind (10 m)</div>
+            <div class="big"><span id="vmaxMs">—</span> <span style="font-size:18px;font-weight:600">m/s</span></div>
+            <div class="units"><span id="vmaxKt">—</span> kt · <span id="vmaxMph">—</span> mph</div>
+            <div class="cat-badge" id="catBadge">—</div>
+          </div>
+          <div class="mini"><div class="l">Min pressure</div><div class="v"><span id="pmin">—</span> <small>hPa</small></div></div>
+          <div class="mini"><div class="l">Outflow temp T₀</div><div class="v"><span id="touts">—</span> <small>°C</small></div></div>
+          <div class="mini"><div class="l">Outflow level</div><div class="v"><span id="otl">—</span> <small>hPa</small></div></div>
+          <div class="mini"><div class="l">Carnot efficiency</div><div class="v"><span id="eff">—</span></div></div>
+        </div>
+        <div class="flag" id="flag"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">Sensitivity to sea-surface temperature</div>
+      <div class="bd">
+        <canvas id="sens" width="640" height="270" aria-label="Potential intensity versus SST"></canvas>
+        <div class="caption">Potential intensity vs. SST holding the current sounding fixed. The marker is your selected SST — note how steeply the ceiling climbs as the ocean warms.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPLAINER -->
+<div class="explain">
+  <h2>Reading the construction on the sounding</h2>
+  <p>The chart renders the three profiles the PI closure compares. The
+  <strong style="color:var(--parcel)">magenta curve</strong> is the density temperature T<sub>ρ</sub> of a
+  parcel saturated at the sea-surface temperature, lifted reversibly; the
+  <strong style="color:var(--gray)">grey curve</strong> is T<sub>ρ</sub> of the actual, subsaturated
+  boundary-layer parcel. Buoyancy is evaluated against the environmental density (virtual) temperature, the
+  <strong style="color:darkred">dotted red</strong> profile. The
+  <strong style="color:var(--parcel)">purple area</strong> is the saturation CAPE of the ocean parcel
+  (CAPE*); the <strong style="color:var(--warm)">red area</strong> is the boundary-layer CAPE (CAPE<sub>b</sub>)
+  that is <em>subtracted</em>; the residual purple — their difference — is what scales V². The saturated
+  parcel's level of neutral buoyancy fixes the outflow temperature T<sub>0</sub> (marked), and the
+  <strong style="color:var(--sea)">SST</strong> sits at the surface.</p>
+  <p>Crucially, <strong>PI is not CAPE</strong>. A moist-neutral environment can have CAPE<sub>b</sub> ≈ 0
+  (the boundary-layer parcel is non-buoyant) yet still support a large PI, because the closure depends on the
+  <em>difference</em> CAPE* − CAPE<sub>b</sub> — i.e. on the air–sea thermodynamic disequilibrium between a
+  saturated ocean surface and the subsaturated overlying air, not on the environmental instability itself.
+  The "Idealized 30 °C moist adiabat" preset isolates exactly this limit.</p>
+
+  <h3>The governing relation</h3>
+  <p>An axisymmetric, steady-state tropical cyclone is idealized as a Carnot cycle: isothermal enthalpy
+  uptake from the ocean in the inflow, near-adiabatic ascent in the eyewall, isothermal heat export near the
+  cold outflow, and adiabatic subsidence in the environment. Equating the cycle's mechanical power generation
+  to surface frictional dissipation yields the closure evaluated here (Bister &amp; Emanuel 2002):</p>
+  <div class="eq">
+    V<sub>max</sub><span class="c">²</span> =
+    <span class="c">(C<sub>k</sub>/C<sub>D</sub>)</span> ·
+    <span class="c">(T<sub>s</sub>/T<sub>0</sub>)</span> ·
+    <span class="c">(CAPE* − CAPE<sub>b</sub>)</span><sub style="font-size:11px">| RMW</sub>
+  </div>
+  <p>where the CAPE difference is evaluated for parcels lifted at the radius of maximum winds. The factor
+  T<sub>s</sub>/T<sub>0</sub> is the dissipative-heating amplification (it reduces to unity when dissipative
+  heating is disabled). This is mathematically equivalent to the familiar air–sea interaction form</p>
+  <div class="eq">
+    V<sub>max</sub><span class="c">²</span> =
+    <span class="c">(C<sub>k</sub>/C<sub>D</sub>)</span> ·
+    <span class="c">(T<sub>s</sub> − T<sub>0</sub>)/T<sub>0</sub></span> ·
+    <span class="c">(k<sub>0</sub>* − k)</span>
+  </div>
+  <p>with (T<sub>s</sub>−T<sub>0</sub>)/T<sub>0</sub> the Carnot efficiency (including dissipative heating) and
+  k<sub>0</sub>* − k the air–sea enthalpy disequilibrium — the deficit between the saturation enthalpy of the
+  sea surface and the enthalpy of near-surface air. The CAPE difference at the radius of maximum winds is the
+  numerical embodiment of efficiency × disequilibrium; the pcmin algorithm evaluates it directly from the
+  sounding rather than parameterizing k<sub>0</sub>* − k.</p>
+
+  <div class="terms">
+    <div class="term"><div class="sym">C<sub>k</sub>/C<sub>D</sub></div><div class="nm">Exchange-coefficient ratio</div>
+      <p>Ratio of the surface exchange coefficients for enthalpy and momentum. Field estimates place it near 0.9; it remains uncertain, particularly at hurricane-force wind speeds.</p></div>
+    <div class="term"><div class="sym">T<sub>s</sub>/T<sub>0</sub></div><div class="nm">Thermodynamic efficiency</div>
+      <p>Dissipative heating recycles boundary-layer dissipation as a surface heat source, replacing the nominal Carnot factor (T<sub>s</sub>−T<sub>0</sub>)/T<sub>s</sub> with (T<sub>s</sub>−T<sub>0</sub>)/T<sub>0</sub> — roughly a 20% intensification of V<sub>max</sub>.</p></div>
+    <div class="term"><div class="sym">CAPE*−CAPE<sub>b</sub></div><div class="nm">Disequilibrium term</div>
+      <p>Saturation CAPE of the SST parcel minus boundary-layer CAPE, both at the RMW. Proportional to k<sub>0</sub>*−k; the residual-purple area on the sounding.</p></div>
+    <div class="term"><div class="sym">T<sub>0</sub></div><div class="nm">Outflow temperature</div>
+      <p>Temperature at the level of neutral buoyancy of the SST-saturated parcel — the cold reservoir of the cycle. Diagnosed, not prescribed.</p></div>
+  </div>
+
+  <details>
+    <summary>The pcmin closure, step by step</summary>
+    <div class="inner"><p class="ref">For a given SST and sounding the algorithm iterates on the minimum central
+      pressure p<sub>c</sub>. Each iteration (i) lifts a parcel saturated at the SST from min(p<sub>c</sub>, 1000 hPa)
+      — i.e. at the radius of maximum winds, where the depressed pressure raises the saturation mixing ratio — to
+      obtain CAPE* and, from its level of neutral buoyancy, T<sub>0</sub> and the outflow level; (ii) lifts the
+      boundary-layer parcel, with mixing ratio adjusted to the reduced pressure, for CAPE<sub>b</sub>; and (iii)
+      updates p<sub>c</sub> = p<sub>env</sub>·exp[−CAT/(R<sub>d</sub> T<sub>v,avg</sub>)], where CAT collects the
+      scaled CAPE difference. Convergence (Δp<sub>c</sub> &lt; 0.5 hPa) takes a few iterations. Buoyancy uses
+      density temperature T<sub>ρ</sub> = T(1 + r<sub>v</sub>/ε)/(1 + r<sub>T</sub>); the 10-m wind is reduced
+      from the gradient value by a factor 0.8 (Emanuel 2000; Powell et al. 2003). The implementation is a direct
+      JavaScript port of <code>tcpyPI</code> (Gilford 2021), reproducing the Python reference to within
+      0.01 m/s and 0.01 hPa.</p></div>
+  </details>
+  <details>
+    <summary>Reversible vs pseudo-adiabatic ascent</summary>
+    <div class="inner"><p class="ref">Under <strong>reversible</strong> ascent (the default) all condensate is
+      retained by the parcel, so the total water mixing ratio r<sub>T</sub> exceeds the vapor r<sub>v</sub> and
+      condensate (water) loading depresses T<sub>ρ</sub> aloft — reducing parcel buoyancy, CAPE, and PI relative
+      to the <strong>pseudo-adiabatic</strong> limit, in which condensate is removed (r<sub>T</sub> = r<sub>v</sub>).
+      This is why density temperature, not virtual temperature, is the proper buoyancy variable for the parcels:
+      it generalizes to the condensate-bearing case. The two assumptions bracket the achievable intensity; the
+      true value depends on hydrometeor fallout, which neither idealization resolves.</p></div>
+  </details>
+  <details>
+    <summary>Environmental controls</summary>
+    <div class="inner"><p class="ref"><strong>SST.</strong> Raising T<sub>s</sub> increases both the efficiency
+      and the saturation enthalpy k<sub>0</sub>*, so PI rises steeply and super-linearly — the basis for projected
+      increases in the intensity ceiling under warming, modulated by changes in outflow temperature.
+      <strong>Outflow / upper troposphere.</strong> A colder T<sub>0</sub> widens the efficiency factor; PI is
+      sensitive to tropopause-region temperature. <strong>Boundary-layer humidity.</strong> A drier inflow
+      increases k<sub>0</sub>* − k (larger disequilibrium) but the net PI response is moderated through the
+      central-pressure feedback. <strong>Mid-tropospheric humidity</strong> influences CAPE<sub>b</sub> and the
+      sub-saturation structure but not the air–sea disequilibrium directly. PI is an energetic upper bound;
+      observed storms typically realize 50–80% of it owing to unbalanced dynamics, shear, ocean coupling, and
+      transient structure.</p></div>
+  </details>
+
+  <h3>References</h3>
+  <p class="ref">
+    Emanuel, K. A. (1986). An air–sea interaction theory for tropical cyclones. Part I. <em>J. Atmos. Sci.</em>, 43, 585–605. ·
+    Bister, M. &amp; Emanuel, K. A. (1998). Dissipative heating and hurricane intensity. <em>Meteor. Atmos. Phys.</em>, 65, 233–240. ·
+    Bister, M. &amp; Emanuel, K. A. (2002). Low-frequency variability of tropical cyclone potential intensity. <em>J. Geophys. Res.</em>, 107(D24). ·
+    Emanuel, K. A. (1994). <em>Atmospheric Convection.</em> Oxford. ·
+    Emanuel, K. A. (2000). A statistical analysis of tropical cyclone intensity. <em>Mon. Wea. Rev.</em>, 128, 1139–1152. ·
+    Powell, M. D., Vickery, P. J., &amp; Reinhold, T. A. (2003). Reduced drag coefficient for high wind speeds in tropical cyclones. <em>Nature</em>, 422, 279–283. ·
+    Bell, M. M., Montgomery, M. T., &amp; Emanuel, K. A. (2012). Air–sea enthalpy and momentum exchange at major hurricane wind speeds. <em>J. Atmos. Sci.</em>, 69, 3197–3222. ·
+    Wing, A. A., Emanuel, K., &amp; Solomon, S. (2015). On the factors affecting trends and variability in tropical cyclone potential intensity. <em>Geophys. Res. Lett.</em>, 42. ·
+    Rousseau-Rizzi, R. &amp; Emanuel, K. (2019). An evaluation of hurricane superintensity in axisymmetric numerical models. <em>J. Atmos. Sci.</em>, 76, 1697–1708. ·
+    Gilford, D. M. (2021). pyPI (v1.3): Tropical cyclone potential intensity calculations in Python. <em>Geosci. Model Dev.</em>, 14, 2351–2369.
+  </p>
+  <div class="foot">Computation reproduces <span class="pill">tcpyPI</span> (Bister–Emanuel pcmin) in client-side
+    JavaScript. All math runs locally in your browser; nothing is sent anywhere. The optional
+    “SounderPy figure” export calls a local Python backend (see README).</div>
+</div>
+</div>
+
+<!-- SounderPy export modal -->
+<div class="modal" id="modal">
+  <div class="panel">
+    <div class="mhd"><span>SounderPy figure</span><button class="x" id="modalX">×</button></div>
+    <div class="mbd">
+      <div id="modalBody">
+        <div class="note" style="display:flex;align-items:center;gap:10px"><span class="spinner"></span> Rendering with SounderPy…</div>
+      </div>
+      <div class="mrow">
+        <label class="note">Backend URL:</label>
+        <input id="backendUrl" type="text" value="http://localhost:5000/api/figure">
+        <a id="dlLink" class="btn" style="display:none;text-decoration:none" download="sounderpy_PI.png">Download PNG</a>
+      </div>
+      <div class="note" style="margin-top:8px">Not working? Start the backend: <code>pip install -r requirements.txt</code> then <code>python server.py</code>, and open the page at <code>http://localhost:5000</code>.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Embedded PI engine — faithful JS port of tcpyPI (pcmin)
+   ============================================================ */
+const K = {CPD:1005.7,CPV:1870.0,CL:2500.0,RV:461.5,RD:287.04,ALV0:2.501e6,A:1669.0,B:122.0,b:2.0};
+K.CPVMCL=K.CPV-K.CL; K.EPS=K.RD/K.RV;
+const T_ktoC=t=>t-273.15, T_Ctok=t=>t+273.15;
+const es_cc=tc=>6.112*Math.exp(17.67*tc/(243.5+tc));
+const Lv=tc=>K.ALV0+K.CPVMCL*tc;
+const ev=(R,P)=>R*P/(K.EPS+R);
+const rv=(E,P)=>K.EPS*E/(P-E);
+const Trho=(T,RT,R)=>T*(1+R/K.EPS)/(1+RT);
+const e_pLCL=(TP,RH,PP)=>PP*Math.pow(RH,TP/(K.A-K.B*RH-TP));
+function entropy_S(T,R,P){const EV=ev(R,P);const ES=es_cc(T-273.15);const RH=Math.min(EV/ES,1);const ALV=Lv(T-273.15);
+  return (K.CPD+R*K.CL)*Math.log(T)-K.RD*Math.log(P-EV)+ALV*R/T-R*K.RV*Math.log(RH);}
+function solveT(S,P,RP,Ti){let TGN=Ti,RG=rv(es_cc(T_ktoC(Ti)),P),NC=0,TG=0;
+  while(Math.abs(TGN-TG)>0.001){TG=TGN;const tc=T_ktoC(TG);const EN=es_cc(tc);RG=rv(EN,P);NC++;
+    const ALV=Lv(tc);const SL=(K.CPD+RP*K.CL+ALV*ALV*RG/(K.RV*TG*TG))/TG;const EM=ev(RG,P);
+    const SG=(K.CPD+RP*K.CL)*Math.log(TG)-K.RD*Math.log(P-EM)+ALV*RG/TG;const AP=NC<3?0.3:1.0;
+    TGN=TG+AP*(S-SG)/SL;if(NC>500||EN>(P-1))return{TG,RG,IFLAG:2};}
+  return{TG,RG,IFLAG:1};}
+function argminP(P,pt){let i0=0,b=Infinity;for(let i=0;i<P.length;i++){const d=Math.abs(P[i]-pt);if(d<b){b=d;i0=i;}}return i0;}
+function cape(TP,RP,PP,T_in,R_in,P_in,af=0,pt=50){
+  const N=argminP(P_in,pt);const P=P_in.slice(0,N),T=T_in.slice(0,N),R=R_in.slice(0,N);const nl=P.length;
+  const TV=new Array(nl).fill(0);
+  if(P[2]-P[1]>0)return{CAPED:0,TOB:NaN,LNB:NaN,IFLAG:0};
+  if(RP<1e-6||TP<200)return{CAPED:0,TOB:NaN,LNB:NaN,IFLAG:0};
+  let RH=Math.min(ev(RP,PP)/es_cc(T_ktoC(TP)),1);const S=entropy_S(TP,RP,PP);const PLCL=e_pLCL(TP,RH,PP);
+  let jmin=1e6;
+  for(let j=0;j<nl;j++){jmin=Math.min(jmin,j);
+    if(P[j]>=PLCL){const TG=TP*Math.pow(P[j]/PP,K.RD/K.CPD);TV[j]=Trho(TG,RP,RP)-Trho(T[j],R[j],R[j]);}
+    else{const r=solveT(S,P[j],RP,T[j]);if(r.IFLAG===2)return{CAPED:0,TOB:T[0],LNB:P[0],IFLAG:2};
+      const RM=af*r.RG+(1-af)*RP;TV[j]=Trho(r.TG,RM,r.RG)-Trho(T[j],R[j],R[j]);}}
+  let NA=0,PA=0,INB=0;
+  for(let j=nl-1;j>jmin;j--)if(TV[j]>0)INB=Math.max(INB,j);
+  if(INB===0)return{CAPED:0,TOB:T[0],LNB:0,IFLAG:1};
+  for(let j=jmin+1;j<INB+1;j++){const PF=K.RD*(TV[j]+TV[j-1])*(P[j-1]-P[j])/(P[j]+P[j-1]);PA+=Math.max(PF,0);NA-=Math.min(PF,0);}
+  const PMA=PP+P[jmin],PF=K.RD*(PP-P[jmin])/PMA;PA+=PF*Math.max(TV[jmin],0);NA-=PF*Math.min(TV[jmin],0);
+  let PAT=0,TOB=T[INB],LNB=P[INB];
+  if(INB<nl-1){const PINB=(P[INB+1]*TV[INB]-P[INB]*TV[INB+1])/(TV[INB]-TV[INB+1]);LNB=PINB;
+    PAT=K.RD*TV[INB]*(P[INB]-PINB)/(P[INB]+PINB);
+    TOB=(T[INB]*(PINB-P[INB+1])+T[INB+1]*(P[INB]-PINB))/(P[INB]-P[INB+1]);}
+  return{CAPED:Math.max(PA+PAT-NA,0),TOB,LNB,IFLAG:1};}
+function pi(SSTC,MSL,P,TC,Rgkg,o={}){
+  const CKCD=o.CKCD??0.9,af=o.ascent_flag??0,diss=o.diss_flag??1,Vr=o.V_reduc??0.8,pt=o.ptop??50;
+  const SSTK=T_Ctok(SSTC);const T=TC.map(T_Ctok);const R=Rgkg.map(r=>isNaN(r)?0:r*0.001);
+  if(SSTC<=5||SSTC>100||isNaN(SSTC))return{VMAX:NaN,PMIN:NaN,IFL:0,TO:NaN,OTL:NaN};
+  if(Math.min(...T)<=100||Math.max(...TC)>100)return{VMAX:NaN,PMIN:NaN,IFL:0,TO:NaN,OTL:NaN};
+  const ES0=es_cc(SSTC);const NK=0;
+  let r=cape(T[NK],R[NK],P[NK],T,R,P,af,pt);const CAPEA=r.CAPED;let IFL=1;if(r.IFLAG!==1)IFL=r.IFLAG;
+  let NP=0,PM=970,PMOLD=PM,PNEW=0,TO=NaN,OTL=NaN,TVAV=NaN,RAT=NaN,CAPEM=NaN,CAPEMS=NaN;
+  while(Math.abs(PNEW-PMOLD)>0.5){
+    let TP=T[NK],PP=Math.min(PM,1000),RP=K.EPS*R[NK]*MSL/(PP*(K.EPS+R[NK])-R[NK]*MSL);
+    r=cape(TP,RP,PP,T,R,P,af,pt);CAPEM=r.CAPED;if(r.IFLAG!==1)IFL=r.IFLAG;
+    TP=SSTK;PP=Math.min(PM,1000);RP=rv(ES0,PP);
+    r=cape(TP,RP,PP,T,R,P,af,pt);CAPEMS=r.CAPED;if(r.IFLAG!==1)IFL=r.IFLAG;TO=r.TOB;OTL=r.LNB;
+    RAT=SSTK/TO;if(diss===0)RAT=1;
+    const TV0=Trho(T[NK],R[NK],R[NK]),TVS=Trho(SSTK,RP,RP);TVAV=0.5*(TV0+TVS);
+    let CAT=Math.max((CAPEM-CAPEA)+0.5*CKCD*RAT*(CAPEMS-CAPEM),0);
+    PNEW=MSL*Math.exp(-CAT/(K.RD*TVAV));PMOLD=PM;PM=PNEW;NP++;
+    if(NP>200||PM<400)return{VMAX:NaN,PMIN:NaN,IFL:0,TO:NaN,OTL:NaN};}
+  const CF=0.5*(1+1/K.b);let CAT=Math.max((CAPEM-CAPEA)+CKCD*RAT*CF*(CAPEMS-CAPEM),0);
+  const PMIN=MSL*Math.exp(-CAT/(K.RD*TVAV));const FAC=Math.max(0,CAPEMS-CAPEM);
+  const VMAX=Vr*Math.sqrt(CKCD*RAT*FAC);
+  return{VMAX,PMIN,IFL,TO,OTL,CAPEMS,CAPEA};}
+
+/* density-temperature (°C) of a parcel lifted from the surface.
+   r0 = surface mixing ratio (g/g); af = ascent flag (0 reversible, 1 pseudo) */
+function liftParcelTrho(Tsurf_C,p0,r0,P,af){
+  const TP=T_Ctok(Tsurf_C),RP=r0,S=entropy_S(TP,RP,p0);
+  const RH=Math.min(ev(RP,p0)/es_cc(Tsurf_C),1);const PLCL=e_pLCL(TP,RH,p0);
+  return P.map(p=>{
+    if(p>p0+0.01)return NaN;
+    if(p>=PLCL){const TG=TP*Math.pow(p/p0,K.RD/K.CPD);return T_ktoC(Trho(TG,RP,RP));}
+    const r=solveT(S,p,RP,T_Ctok(0));if(r.IFLAG===2)return NaN;
+    const RM=af*r.RG+(1-af)*RP;return T_ktoC(Trho(r.TG,RM,r.RG));});
+}
+
+/* diagnostics for the stats strip + km labels */
+function heights(prof){const z=new Array(prof.length);z[0]=10;
+  for(let i=1;i<prof.length;i++){const w0=mixingRatio(prof[i].Td,prof[i].p)/1000,w1=mixingRatio(prof[i-1].Td,prof[i-1].p)/1000;
+    const Tv0=T_Ctok(prof[i].T)*(1+0.61*w0),Tv1=T_Ctok(prof[i-1].T)*(1+0.61*w1);
+    z[i]=z[i-1]+287.04*0.5*(Tv0+Tv1)/9.80665*Math.log(prof[i-1].p/prof[i].p);}return z;}
+function pwatMM(prof){let s=0;for(let i=1;i<prof.length;i++){const w0=mixingRatio(prof[i].Td,prof[i].p)/1000,w1=mixingRatio(prof[i-1].Td,prof[i-1].p)/1000;
+  s+=0.5*(w0+w1)*(prof[i-1].p-prof[i].p)*100;}return s/9.80665;}
+function lclP(prof){const T0=prof[0].T,p0=prof[0].p;const RH=Math.min(es_cc(prof[0].Td)/es_cc(T0),1);
+  return e_pLCL(T_Ctok(T0),RH,p0);}
+function wetbulbC(T,RH){ // Stull (2011) approximation; T °C, RH %
+  return T*Math.atan(0.151977*Math.sqrt(RH+8.313659))+Math.atan(T+RH)
+    -Math.atan(RH-1.676331)+0.00391838*Math.pow(RH,1.5)*Math.atan(0.023101*RH)-4.686035;}
+function pAtHeight(prof,z,hkm){const t=hkm*1000;
+  for(let i=1;i<z.length;i++){if((z[i-1]-t)*(z[i]-t)<=0){const f=(t-z[i-1])/(z[i]-z[i-1]);return prof[i-1].p+f*(prof[i].p-prof[i-1].p);}}return null;}
+
+/* ============================================================
+   State + presets
+   ============================================================ */
+const BASE=[
+  {p:1000,T:28,Td:23},{p:975,T:25,Td:22.6},{p:950,T:24,Td:20.3},{p:925,T:23,Td:16.7},{p:900,T:22,Td:15},
+  {p:875,T:20,Td:13.2},{p:850,T:19,Td:11.4},{p:825,T:18,Td:10.9},{p:800,T:16,Td:8.9},{p:775,T:15,Td:6.7},
+  {p:750,T:13,Td:4.4},{p:700,T:11,Td:-4.2},{p:650,T:8,Td:-8.9},{p:600,T:5,Td:-16.9},{p:550,T:2,Td:-22},
+  {p:500,T:-2,Td:-19.1},{p:450,T:-6,Td:-30.1},{p:400,T:-11,Td:-43.7},{p:350,T:-18,Td:-47.5},{p:300,T:-27,Td:-52.4},
+  {p:250,T:-37,Td:-53.1},{p:225,T:-43,Td:-56.6},{p:200,T:-49,Td:-61.3},{p:175,T:-57,Td:-66.1},{p:150,T:-65,Td:-72.6},
+  {p:125,T:-73,Td:-80.4},{p:100,T:-79,Td:-84.8},{p:70,T:-73,Td:-89.2},{p:50,T:-64,Td:-91}];
+// Idealized reference atmosphere (zero CAPE, but nonzero PI from air–sea disequilibrium):
+//  T = the actual 80%-RH near-surface parcel (30°C) lifted reversibly — dry adiabat below
+//      its LCL, reversible moist adiabat above — capped at a 200 K outflow (isothermal above).
+//      This makes the boundary-layer parcel neutral (CAPE≈0); a parcel saturated at the SST
+//      has higher θe and stays buoyant to the tropopause, giving a positive potential intensity.
+//  RH = 80% in lowest 100 hPa, linear to 40% at 600 hPa, linear back to 80% at 200 hPa, constant above.
+function idealizedProfile(){
+  const levels=[1000,975,950,925,900,875,850,825,800,775,750,725,700,650,600,550,500,
+                450,400,350,300,250,225,200,175,150,125,100,85,70,60,50];
+  const T0=30,p0=1000,Tout=200,RH0=0.80;         // °C, hPa, K, surface RH
+  const RP=rv(RH0*es_cc(T0),p0);                 // 80%-RH surface mixing ratio (g/g)
+  const S=entropy_S(T_Ctok(T0),RP,p0);           // reversible entropy of that parcel
+  const PLCL=e_pLCL(T_Ctok(T0),RH0,p0);          // lifting condensation level
+  const rhAt=p=> p>=900 ? 80
+              : p>=600 ? 40+(p-600)*40/300       // 900→80, 600→40
+              : p>=200 ? 40+(600-p)*40/400       // 600→40, 200→80
+              : 80;
+  return levels.map(p=>{
+    let Tk;
+    if(p>=p0) Tk=T_Ctok(T0);
+    else if(p>=PLCL) Tk=T_Ctok(T0)*Math.pow(p/p0,K.RD/K.CPD);          // dry adiabat below LCL
+    else {const r=solveT(S,p,RP,T_Ctok(0)); Tk=(r.IFLAG===2)?Tout:r.TG;} // reversible moist above
+    Tk=Math.max(Tk,Tout);                         // isothermal above the 200 K outflow
+    const Tc=T_ktoC(Tk),rh=rhAt(p),e=rh/100*es_cc(Tc),l=Math.log(e/6.112);
+    return {p,T:+Tc.toFixed(1),Td:+(243.5*l/(17.67-l)).toFixed(1)};
+  });
+}
+// Jordan (1958) mean West-Indies hurricane-season sounding (Jordan, J. Meteor. 15, 91-97).
+// Temperature + mixing ratio digitized to dewpoint; the canonical tropical reference sounding.
+const JORDAN=[{p:1015,T:26.3,Td:23.8},{p:1000,T:25.3,Td:22.8},{p:950,T:22.6,Td:19.8},{p:900,T:19.8,Td:16.6},
+  {p:850,T:17,Td:13.1},{p:800,T:14.5,Td:9.6},{p:750,T:12,Td:6.1},{p:700,T:9.4,Td:2.6},{p:650,T:6.5,Td:-1.5},
+  {p:600,T:3.4,Td:-5.6},{p:550,T:0,Td:-9.8},{p:500,T:-3.9,Td:-14.5},{p:450,T:-8.4,Td:-20.3},{p:400,T:-13.2,Td:-25.5},
+  {p:350,T:-18.8,Td:-32.1},{p:300,T:-25.6,Td:-39.6},{p:250,T:-33.9,Td:-47.5},{p:200,T:-43.9,Td:-57.6},
+  {p:150,T:-56.9,Td:-70.1},{p:100,T:-73.5,Td:-81.8},{p:70,T:-68,Td:-85.2},{p:50,T:-60,Td:-87.2}];
+// Weisman & Klemp (1982) analytic supercell sounding (θ₀=300 K, θtr=343 K, ztr=12 km,
+// q₀=14 g/kg) — the canonical warm-surface, large-CAPE mid-latitude severe-storm profile.
+const WK=[{p:1000,T:26.9,Td:19},{p:950,T:23.2,Td:18.2},{p:900,T:19.6,Td:17.4},{p:850,T:16.1,Td:15.2},
+  {p:800,T:12.4,Td:11.2},{p:750,T:8.6,Td:7.1},{p:700,T:4.7,Td:2.7},{p:650,T:0.6,Td:-1.9},{p:600,T:-3.7,Td:-6.7},
+  {p:550,T:-8.3,Td:-11.9},{p:500,T:-13.2,Td:-17.4},{p:450,T:-18.5,Td:-23.4},{p:400,T:-24.4,Td:-30},
+  {p:350,T:-30.8,Td:-37.4},{p:300,T:-38.1,Td:-45.7},{p:250,T:-46.5,Td:-55.4},{p:200,T:-56.1,Td:-66.7},
+  {p:150,T:-55.7,Td:-66.4},{p:100,T:-55.1,Td:-65.9},{p:70,T:-54.6,Td:-65.4},{p:50,T:-54,Td:-64.9}];
+const PRESETS={
+  "Idealized 30C moist adiabat":{sst:30,mslp:1010,prof:idealizedProfile()},
+  "Jordan mean (1958)":{sst:28,mslp:1010,prof:JORDAN.map(r=>({...r}))},
+  "Weisman-Klemp supercell":{sst:28,mslp:1010,prof:WK.map(r=>({...r}))},
+  "Tropical Atlantic":{sst:29,mslp:1010,prof:BASE.map(r=>({...r}))},
+  "Warm / Cat-5 prone":{sst:31,mslp:1010,prof:BASE.map(r=>({...r}))},
+  "Marginal (cool SST)":{sst:26,mslp:1010,prof:BASE.map(r=>({...r}))},
+  "Dry mid-levels":{sst:29,mslp:1010,prof:BASE.map(r=>(r.p<=850&&r.p>=500?{...r,Td:r.Td-12}:{...r}))},
+};
+let state={sst:30,mslp:1010,ckcd:0.9,diss:1,ascent:0,prof:PRESETS["Idealized 30C moist adiabat"].prof.map(r=>({...r}))};
+
+const presetsEl=document.getElementById('presets');
+Object.keys(PRESETS).forEach(name=>{const b=document.createElement('button');b.textContent=name;
+  b.onclick=()=>{const p=PRESETS[name];state.sst=p.sst;state.mslp=p.mslp;state.prof=p.prof.map(r=>({...r}));
+    document.getElementById('sst').value=p.sst;document.getElementById('mslp').value=p.mslp;
+    document.getElementById('sstv').textContent=p.sst.toFixed(1);document.getElementById('mslpv').textContent=p.mslp;
+    buildTable();render();};presetsEl.appendChild(b);});
+
+const tbody=document.getElementById('tbody');
+function buildTable(){tbody.innerHTML='';
+  state.prof.forEach((row,i)=>{const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="text-align:right;color:var(--muted);font-weight:600;padding:2px 8px 2px 4px;border-bottom:1px solid #f0f4f7">${row.p}</td>
+      <td style="border-bottom:1px solid #f0f4f7"><input data-i="${i}" data-k="T" type="number" step="0.5" value="${row.T}" style="width:60px;border:1px solid transparent;background:transparent;text-align:right;font:inherit;padding:4px 6px;border-radius:6px"></td>
+      <td style="border-bottom:1px solid #f0f4f7"><input data-i="${i}" data-k="Td" type="number" step="0.5" value="${row.Td}" style="width:60px;border:1px solid transparent;background:transparent;text-align:right;font:inherit;padding:4px 6px;border-radius:6px"></td>`;
+    tbody.appendChild(tr);});
+  tbody.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('focus',e=>{e.target.style.borderColor='var(--accent)';e.target.style.background='#fff';});
+    inp.addEventListener('blur',e=>{e.target.style.borderColor='transparent';e.target.style.background='transparent';});
+    inp.addEventListener('input',e=>{const i=+e.target.dataset.i,k=e.target.dataset.k;let v=parseFloat(e.target.value);
+      if(!isNaN(v)){if(k==='Td'&&v>state.prof[i].T)v=state.prof[i].T;state.prof[i][k]=v;render();}});});
+}
+function mixingRatio(Td,p){const e=es_cc(Td);return K.EPS*e/(p-e)*1000;} // g/kg
+
+/* ============================================================
+   Skew-T geometry, cached background, and drawing
+   ============================================================ */
+// Match SounderPy: MetPy SkewT rotation=47°, p 1050→50, surface-temp-dependent x-bounds
+const Pbot=1050,Ptop=50,ROT=47*Math.PI/180;
+function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function tempBounds(T0){ if(T0<=-10)return T0<=-20?[-52,32]:[-42,42]; if(T0>=20)return[-22,62]; return[-32,52]; }
+function makeGeo(w,h,prof){
+  const mL=46,mR=14,mT=12,mB=30,W=w-mL-mR,H=h-mT-mB;
+  const [Tmn,Tmx]=tempBounds(prof[0].T);
+  const lp0=Math.log(Pbot),lp1=Math.log(Ptop),TAN=Math.tan(ROT);
+  const yn=p=>(Math.log(p)-lp0)/(lp1-lp0);          // 0 at 1050, 1 at 100
+  const xn=T=>(T-Tmn)/(Tmx-Tmn);                    // 0..1 across bottom axis
+  const yP=p=>mT+(1-yn(p))*H;
+  const xT=(T,p)=>mL+(xn(T)+TAN*yn(p))*W;           // MetPy skew_deg in normalized space
+  return {mL,mR,mT,mB,W,H,yP,xT,Tmn,Tmx,yn,xn};
+}
+let _bg=null,_bgKey='';
+function makeOff(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
+function buildBg(w,h,g,dpr){
+  const off=makeOff(w*dpr,h*dpr);const ctx=off.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.save();ctx.beginPath();ctx.rect(g.mL,g.mT,g.W,g.H);ctx.clip();
+  // dry adiabats (cornflowerblue, like SounderPy)
+  ctx.strokeStyle='rgba(100,149,237,0.55)';ctx.lineWidth=0.7;
+  for(let th=-40;th<=240;th+=10){ctx.beginPath();let f=true;
+    for(let p=Pbot;p>=Ptop;p-=10){const T=(th+273.15)*Math.pow(p/1000,K.RD/K.CPD)-273.15;
+      const x=g.xT(T,p),y=g.yP(p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);}ctx.stroke();}
+  // moist (pseudo) adiabats (cornflowerblue)
+  ctx.strokeStyle='rgba(100,149,237,0.55)';ctx.lineWidth=0.7;
+  for(let t0=-30;t0<=40;t0+=5){const TP=T_Ctok(t0),RP=rv(es_cc(t0),1000),S=entropy_S(TP,RP,1000);
+    ctx.beginPath();let f=true;
+    for(let p=1000;p>=Ptop;p-=12){const r=solveT(S,p,RP,T_Ctok(0));if(r.IFLAG===2)break;
+      const x=g.xT(T_ktoC(r.TG),p),y=g.yP(p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);}ctx.stroke();}
+  // mixing-ratio lines (black dashed thin, like SounderPy)
+  ctx.strokeStyle='rgba(0,0,0,0.42)';ctx.lineWidth=0.55;ctx.setLineDash([4,3]);
+  [1,2,4,7,10,16,24,32].forEach(rg=>{const rr=rg/1000;ctx.beginPath();let f=true;
+    for(let p=1050;p>=400;p-=18){const e=rr*p/(K.EPS+rr);if(e<=0||e>=p)continue;const l=Math.log(e/6.112);
+      const T=243.5*l/(17.67-l);const x=g.xT(T,p),y=g.yP(p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);}ctx.stroke();});
+  ctx.setLineDash([]);
+  // isotherms (light gray)
+  ctx.strokeStyle='rgba(120,134,145,0.26)';ctx.lineWidth=0.8;
+  for(let T=-120;T<=80;T+=10){ctx.beginPath();ctx.moveTo(g.xT(T,Pbot),g.yP(Pbot));ctx.lineTo(g.xT(T,Ptop),g.yP(Ptop));ctx.stroke();}
+  // 0°C and -20°C highlights (blue dashed)
+  ctx.strokeStyle='rgba(0,0,255,0.30)';ctx.lineWidth=1;ctx.setLineDash([5,4]);
+  [0,-20].forEach(T=>{ctx.beginPath();ctx.moveTo(g.xT(T,Pbot),g.yP(Pbot));ctx.lineTo(g.xT(T,Ptop),g.yP(Ptop));ctx.stroke();});
+  ctx.setLineDash([]);
+  ctx.restore();
+  // isobars + pressure labels (bold black, just outside left)
+  ctx.strokeStyle='rgba(150,160,170,0.55)';ctx.lineWidth=0.8;
+  ctx.fillStyle='#111';ctx.font='bold 12px -apple-system,sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+  [1000,900,800,700,600,500,400,300,200,150,100].forEach(p=>{const y=g.yP(p);
+    ctx.beginPath();ctx.moveTo(g.mL,y);ctx.lineTo(w-g.mR,y);ctx.stroke();ctx.fillText(p,g.mL-5,y);});
+  // bottom temperature ticks (bold)
+  ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#111';ctx.font='bold 12px -apple-system';
+  for(let T=-20;T<=60;T+=10){const x=g.xT(T,Pbot);if(x>g.mL&&x<w-g.mR)ctx.fillText(T,x,h-g.mB+7);}
+  ctx.fillStyle='#9aa8b3';ctx.font='10px -apple-system';
+  ctx.fillText('Temperature (°C)',g.mL+g.W/2,h-13);
+  ctx.save();ctx.translate(12,g.mT+g.H/2);ctx.rotate(-Math.PI/2);ctx.fillText('Pressure (hPa)',0,0);ctx.restore();
+  ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.strokeRect(g.mL,g.mT,g.W,g.H);
+  return off;
+}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+// draw "base" followed by a lowered subscript, anchored at x with given alignment
+function subLabel(ctx,x,y,base,sub,color,align){
+  const BF='800 12px -apple-system',SF='700 9px -apple-system';
+  ctx.fillStyle=color;ctx.textBaseline='middle';ctx.textAlign='left';
+  ctx.font=BF;const wb=ctx.measureText(base).width;
+  ctx.font=SF;const ws=ctx.measureText(sub).width;
+  let x0=x;if(align==='right')x0=x-(wb+ws);else if(align==='center')x0=x-(wb+ws)/2;
+  ctx.font=BF;ctx.fillText(base,x0,y);
+  ctx.font=SF;ctx.fillText(sub,x0+wb+0.5,y+4);
+}
+
+function drawSkewT(prof,sst,res){
+  const cv=document.getElementById('skewt');const dpr=window.devicePixelRatio||1;
+  const aspect=cv.height/cv.width;const w=cv.clientWidth||cv.width;const h=Math.round(w*aspect);
+  if(cv.style)cv.style.height=h+'px';
+  cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  const g=makeGeo(w,h,prof);
+  const bgkey=w+'_'+g.Tmn+'_'+dpr;
+  if(_bg===null||_bgKey!==bgkey){_bg=buildBg(w,h,g,dpr);_bgKey=bgkey;}
+  ctx.clearRect(0,0,w,h);ctx.drawImage(_bg,0,0,w,h);
+
+  const P=prof.map(r=>r.p),p0=P[0];const af=state.ascent;
+  const Rgg=prof.map(r=>mixingRatio(r.Td,r.p)/1000);
+  const envDen=prof.map((r,i)=>T_ktoC(Trho(T_Ctok(r.T),Rgg[i],Rgg[i])));
+  const r0sat=rv(es_cc(sst),p0);
+  const oceanDen=liftParcelTrho(sst,p0,r0sat,P,af);
+  const r0bl=mixingRatio(prof[0].Td,p0)/1000;
+  const blDen=liftParcelTrho(prof[0].T,p0,r0bl,P,af);
+
+  ctx.save();ctx.beginPath();ctx.rect(g.mL,g.mT,g.W,g.H);ctx.clip();ctx.lineJoin='round';
+
+  // Shade positive-buoyancy areas (layer-by-layer trapezoids, robust to CIN/elevated CAPE)
+  // between a parcel and the environment. Purple = CAPEMS (ocean parcel); red = CAPEM
+  // (near-surface parcel) overlaid, so the residual purple ≈ CAPEMS−CAPEM ∝ V².
+  let oMaxI=-1,oMaxB=0,redMaxI=-1,redMaxB=0;
+  for(let i=0;i<P.length;i++){
+    if(!isNaN(oceanDen[i])){const b=oceanDen[i]-envDen[i];if(b>oMaxB){oMaxB=b;oMaxI=i;}}
+    if(!isNaN(blDen[i])){const b=blDen[i]-envDen[i];if(b>redMaxB){redMaxB=b;redMaxI=i;}}
+  }
+  const shadePos=(parcel,color)=>{ctx.fillStyle=color;
+    for(let i=0;i<P.length-1;i++){
+      if(isNaN(parcel[i])||isNaN(parcel[i+1]))continue;
+      const a0=parcel[i]-envDen[i],a1=parcel[i+1]-envDen[i+1];
+      if(a0<=0&&a1<=0)continue;
+      let pa=P[i],pb=P[i+1],ta0=parcel[i],te0=envDen[i],ta1=parcel[i+1],te1=envDen[i+1];
+      if(a0<0){const fr=a0/(a0-a1);pa=P[i]+fr*(P[i+1]-P[i]);const ev=envDen[i]+fr*(envDen[i+1]-envDen[i]);ta0=ev;te0=ev;}
+      if(a1<0){const fr=a0/(a0-a1);pb=P[i]+fr*(P[i+1]-P[i]);const ev=envDen[i]+fr*(envDen[i+1]-envDen[i]);ta1=ev;te1=ev;}
+      ctx.beginPath();ctx.moveTo(g.xT(te0,pa),g.yP(pa));ctx.lineTo(g.xT(ta0,pa),g.yP(pa));
+      ctx.lineTo(g.xT(ta1,pb),g.yP(pb));ctx.lineTo(g.xT(te1,pb),g.yP(pb));ctx.closePath();ctx.fill();
+    }};
+  shadePos(oceanDen,'rgba(177,35,158,.13)');
+  shadePos(blDen,'rgba(214,69,55,.34)');
+  // near-surface parcel (grey dashed)
+  ctx.strokeStyle=getCSS('--gray');ctx.lineWidth=1.8;ctx.setLineDash([5,4]);ctx.beginPath();let f=true;
+  prof.forEach((r,i)=>{if(isNaN(blDen[i]))return;const x=g.xT(blDen[i],r.p),y=g.yP(r.p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);});
+  ctx.stroke();ctx.setLineDash([]);
+  // ocean parcel (magenta dashed)
+  ctx.strokeStyle=getCSS('--parcel');ctx.lineWidth=2.6;ctx.setLineDash([7,4]);ctx.beginPath();f=true;
+  prof.forEach((r,i)=>{if(isNaN(oceanDen[i]))return;const x=g.xT(oceanDen[i],r.p),y=g.yP(r.p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);});
+  ctx.stroke();ctx.setLineDash([]);
+  // wetbulb temperature (light blue, SounderPy #3d8aff)
+  ctx.strokeStyle='#3d8aff';ctx.globalAlpha=0.65;ctx.lineWidth=1.8;ctx.beginPath();f=true;
+  prof.forEach(r=>{const rh=Math.max(1,Math.min(es_cc(r.Td)/es_cc(r.T),1)*100);const tw=wetbulbC(r.T,rh);
+    const x=g.xT(tw,r.p),y=g.yP(r.p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);});ctx.stroke();ctx.globalAlpha=1;
+  // virtual temperature (darkred dotted, SounderPy)
+  ctx.strokeStyle='darkred';ctx.globalAlpha=0.75;ctx.lineWidth=2.2;ctx.setLineDash([1.5,2.5]);ctx.beginPath();f=true;
+  prof.forEach((r,i)=>{const x=g.xT(envDen[i],r.p),y=g.yP(r.p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);});ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+  // dewpoint (green)
+  ctx.strokeStyle='green';ctx.lineWidth=3;ctx.beginPath();f=true;
+  prof.forEach(r=>{const x=g.xT(r.Td,r.p),y=g.yP(r.p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);});ctx.stroke();
+  // temperature (red)
+  ctx.strokeStyle='red';ctx.lineWidth=3.2;ctx.beginPath();f=true;
+  prof.forEach(r=>{const x=g.xT(r.T,r.p),y=g.yP(r.p);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);});ctx.stroke();
+  // inline curve labels (self-documenting; replaces the external legend)
+  const ip=tp=>{let bi=0,bd=1e9;prof.forEach((r,i)=>{const d=Math.abs(r.p-tp);if(d<bd){bd=d;bi=i;}});return bi;};
+  const clab=(val,p,txt,color,align,dx)=>{ctx.fillStyle=color;ctx.font='800 11px -apple-system';
+    ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillText(txt,g.xT(val,p)+dx,g.yP(p));};
+  const rT=prof.find(r=>r.p<=250)||prof[prof.length-1];
+  clab(rT.T,rT.p,'T','red','left',5);
+  clab(rT.Td,rT.p,'Td','green','right',-5);
+  const iw=ip(470);clab(wetbulbC(prof[iw].T,Math.max(1,Math.min(es_cc(prof[iw].Td)/es_cc(prof[iw].T),1)*100)),prof[iw].p,'Tw','#3d8aff','right',-5);
+  const iv=ip(760);clab(envDen[iv],prof[iv].p,'Tv','darkred','left',5);
+  const io=ip(330);subLabel(ctx,g.xT(oceanDen[io],prof[io].p)-6,g.yP(prof[io].p),'T','ρ,ocean','#b1239e','right');
+  const ib=ip(910);subLabel(ctx,g.xT(blDen[ib],prof[ib].p)+6,g.yP(prof[ib].p),'T','ρ,parcel','#6b7884','left');
+  if(oMaxI>=0&&oMaxB>0.3){const i=oMaxI;const bl=isNaN(blDen[i])?envDen[i]:blDen[i];const midT=0.5*(bl+oceanDen[i]);
+    ctx.fillStyle='rgba(150,30,130,0.85)';ctx.font='italic 800 10.5px -apple-system';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('residual ∝ V²',g.xT(midT,P[i]),g.yP(P[i]));}
+  if(redMaxI>=0&&redMaxB>0.2){const i=redMaxI;const midT=0.5*(envDen[i]+blDen[i]);
+    subLabel(ctx,g.xT(midT,P[i]),g.yP(P[i]),'CAPE','b','rgba(180,36,26,0.95)','center');}
+  ctx.restore();
+
+  // height (km) labels along the left interior
+  const zz=heights(prof);
+  ctx.fillStyle='#9aa8b3';ctx.font='9.5px -apple-system';ctx.textAlign='left';ctx.textBaseline='middle';
+  [1,3,5,9,13,16].forEach(km=>{const pp=pAtHeight(prof,zz,km);if(pp&&pp>=Ptop&&pp<=Pbot){
+    const y=g.yP(pp);ctx.fillText(km+' km',g.mL+5,y);}});
+
+  const ok=res&&res.IFL===1&&!isNaN(res.VMAX);
+  // outflow level line + marker (clamp to chart top if outflow is above 100 hPa)
+  if(ok&&!isNaN(res.OTL)&&res.OTL>0&&res.OTL<=Pbot){
+    const pclamp=Math.max(res.OTL,Ptop);const y=g.yP(pclamp);
+    ctx.save();ctx.beginPath();ctx.rect(g.mL,g.mT,g.W,g.H);ctx.clip();
+    ctx.strokeStyle='rgba(36,52,65,.4)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(g.mL,y);ctx.lineTo(g.mL+g.W,y);ctx.stroke();ctx.setLineDash([]);
+    const xo=Math.max(g.mL+5,Math.min(g.mL+g.W-5,g.xT(res.TO-273.15,pclamp)));
+    ctx.fillStyle='#243441';ctx.beginPath();ctx.arc(xo,y,4.5,0,7);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle='#243441';ctx.font='700 10.5px -apple-system';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('T₀ (outflow)',xo+8,y+1);
+  }
+  // SST markers at surface
+  const ys=g.yP(p0);
+  const xsst=g.xT(sst,p0);
+  const sstTv=T_ktoC(Trho(T_Ctok(sst),r0sat,r0sat));
+  const xtv=g.xT(sstTv,p0);
+  // SST density-temp square (magenta)
+  ctx.fillStyle=getCSS('--parcel');roundRect(ctx,xtv-5,ys-5,10,10,2);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+  // SST dot (blue)
+  ctx.fillStyle=getCSS('--sea');ctx.beginPath();ctx.arc(xsst,ys,5.5,0,7);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.6;ctx.stroke();
+  ctx.fillStyle=getCSS('--sea');ctx.font='600 10.5px -apple-system';ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillText('Tₛ '+sst.toFixed(0)+'°',xsst,ys+8);
+
+  // on-plot PI annotation
+  drawAnnot(ctx,g,res,sst,ok);
+}
+function drawAnnot(ctx,g,res,sst,ok){
+  const storm=ok&&res.VMAX>=1;
+  const cat=storm?category(res.VMAX*1.94384):null;
+  const lines=storm?[
+    ['Potential intensity','head'],
+    ['Vₘₐₓ  '+res.VMAX.toFixed(1)+' m/s · '+Math.round(res.VMAX*1.94384)+' kt','big'],
+    ['Pₘᵢₙ  '+res.PMIN.toFixed(0)+' hPa','sub'],
+    ['T₀  '+(res.TO-273.15).toFixed(0)+'°C  @ '+res.OTL.toFixed(0)+' hPa','sub'],
+    ['● '+cat.name,'cat']
+  ]:[['Potential intensity ≈ 0','head'],['Ocean parcel is not buoyant —','sub'],['no storm supported','sub']];
+  ok=storm; // box accent only when a storm exists
+  const bw=186,pad=11,lpad=ok?6:0;
+  // measure heights per line
+  const gap=l=>l==='head'?20:l==='big'?19:l==='cat'?18:17;
+  let bh=pad*2;lines.forEach(([,k])=>bh+=gap(k));
+  const bx=g.mL+g.W-bw-8,by=g.mT+8;
+  ctx.save();
+  roundRect(ctx,bx,by,bw,bh,9);ctx.fillStyle='rgba(255,255,255,.92)';ctx.fill();
+  ctx.strokeStyle='#cdd8df';ctx.lineWidth=1;ctx.stroke();
+  if(ok){ctx.fillStyle=cat.c;roundRect(ctx,bx,by,4,bh,2);ctx.fill();}
+  let ty=by+pad;ctx.textAlign='left';ctx.textBaseline='top';
+  lines.forEach(([t,kind])=>{
+    if(kind==='head'){ctx.font='700 11px -apple-system';ctx.fillStyle='#5b6b78';}
+    else if(kind==='big'){ctx.font='800 13px -apple-system';ctx.fillStyle='#16222e';}
+    else if(kind==='cat'){ctx.font='700 12px -apple-system';ctx.fillStyle=cat?cat.c:'#5b6b78';}
+    else{ctx.font='600 12px -apple-system';ctx.fillStyle='#2b3a47';}
+    ctx.fillText(t,bx+pad+lpad,ty);ty+=gap(kind);
+  });
+  ctx.restore();
+}
+
+/* ============================================================
+   Sensitivity (PI vs SST)
+   ============================================================ */
+function drawSensitivity(prof,sstNow,opts){
+  const cv=document.getElementById('sens');const dpr=window.devicePixelRatio||1;
+  const aspect=cv.height/cv.width;const w=cv.clientWidth||cv.width;const h=Math.round(w*aspect);
+  if(cv.style)cv.style.height=h+'px';
+  cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  const mL=40,mR=14,mT=12,mB=28,W=w-mL-mR,H=h-mT-mB;ctx.clearRect(0,0,w,h);
+  const P=prof.map(r=>r.p),TC=prof.map(r=>r.T),R=prof.map(r=>mixingRatio(r.Td,r.p));
+  const xs=[];for(let s=22;s<=33.01;s+=0.5)xs.push(s);
+  const ys=xs.map(s=>{const r=pi(s,state.mslp,P,TC,R,opts);return isNaN(r.VMAX)?0:r.VMAX;});
+  const ymax=Math.max(60,Math.ceil(Math.max(...ys)/20)*20);
+  const X=s=>mL+(s-22)/(33-22)*W,Y=v=>mT+H-v/ymax*H;
+  ctx.strokeStyle='#eef2f5';ctx.fillStyle='#8496a3';ctx.font='10.5px -apple-system';ctx.textAlign='right';ctx.textBaseline='middle';
+  for(let v=0;v<=ymax;v+=20){const y=Y(v);ctx.beginPath();ctx.moveTo(mL,y);ctx.lineTo(w-mR,y);ctx.stroke();ctx.fillText(v,mL-5,y);}
+  ctx.textAlign='center';ctx.textBaseline='top';
+  for(let s=22;s<=33;s+=2)ctx.fillText(s+'°',X(s),h-mB+6);
+  ctx.beginPath();ctx.moveTo(X(22),Y(0));xs.forEach((s,i)=>ctx.lineTo(X(s),Y(ys[i])));ctx.lineTo(X(33),Y(0));ctx.closePath();
+  const grd=ctx.createLinearGradient(0,mT,0,mT+H);grd.addColorStop(0,'rgba(14,124,155,.20)');grd.addColorStop(1,'rgba(14,124,155,.02)');
+  ctx.fillStyle=grd;ctx.fill();
+  ctx.strokeStyle=getCSS('--accent');ctx.lineWidth=2.4;ctx.beginPath();
+  xs.forEach((s,i)=>{const x=X(s),y=Y(ys[i]);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
+  const rNow=pi(sstNow,state.mslp,P,TC,R,opts);const vn=isNaN(rNow.VMAX)?0:rNow.VMAX;
+  const cx=X(sstNow),cy=Y(vn);
+  ctx.strokeStyle='#c9d3da';ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(cx,Y(0));ctx.lineTo(cx,cy);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=getCSS('--warm');ctx.beginPath();ctx.arc(cx,cy,5,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle='#566';ctx.font='10.5px -apple-system';ctx.save();ctx.translate(11,mT+H/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('PI (m/s)',0,0);ctx.restore();
+  ctx.textAlign='right';ctx.textBaseline='top';ctx.fillStyle='#8496a3';ctx.fillText('SST (°C)',w-mR,h-mB+6);
+}
+
+/* ============================================================
+   Saffir-Simpson + render
+   ============================================================ */
+function category(vKt){
+  if(vKt<34)return{name:'Tropical depression',c:'#5b9bd5'};
+  if(vKt<64)return{name:'Tropical storm',c:'#3aa66f'};
+  if(vKt<83)return{name:'Category 1',c:'#e8b53a'};
+  if(vKt<96)return{name:'Category 2',c:'#e8862f'};
+  if(vKt<113)return{name:'Category 3',c:'#dc5a3a'};
+  if(vKt<137)return{name:'Category 4',c:'#c0334e'};
+  return{name:'Category 5',c:'#8e2d8e'};
+}
+function shade(hex,p){const n=parseInt(hex.slice(1),16);let r=(n>>16)+p,gg=((n>>8)&255)+p,b=(n&255)+p;
+  r=Math.max(0,Math.min(255,r));gg=Math.max(0,Math.min(255,gg));b=Math.max(0,Math.min(255,b));
+  return'#'+(r<<16|gg<<8|b).toString(16).padStart(6,'0');}
+function render(){
+  const opts={CKCD:state.ckcd,ascent_flag:state.ascent,diss_flag:state.diss};
+  const P=state.prof.map(r=>r.p),TC=state.prof.map(r=>r.T),R=state.prof.map(r=>mixingRatio(r.Td,r.p));
+  const res=pi(state.sst,state.mslp,P,TC,R,opts);window._lastPI=res;
+  const flag=document.getElementById('flag'),iflp=document.getElementById('iflpill');
+  const ok=!isNaN(res.VMAX)&&res.IFL===1;
+  if(!ok){
+    ['vmaxMs','vmaxKt','vmaxMph','pmin','touts','otl','eff'].forEach(id=>document.getElementById(id).textContent='—');
+    document.getElementById('catBadge').textContent=res.IFL===3?'Data gap':'No storm';
+    document.getElementById('vmaxCard').style.background='linear-gradient(135deg,#7d8a94,#5b6b78)';
+    iflp.textContent='no solution';
+    flag.textContent=res.IFL===3?'Profile has gaps — fill all levels.':'These conditions do not support a tropical cyclone (PI ≈ 0).';
+  }else{
+    const kt=res.VMAX*1.94384,mph=res.VMAX*2.23694,cat=category(kt);
+    document.getElementById('vmaxMs').textContent=res.VMAX.toFixed(1);
+    document.getElementById('vmaxKt').textContent=Math.round(kt);
+    document.getElementById('vmaxMph').textContent=Math.round(mph);
+    document.getElementById('pmin').textContent=res.PMIN.toFixed(0);
+    document.getElementById('touts').textContent=(res.TO-273.15).toFixed(1);
+    document.getElementById('otl').textContent=res.OTL.toFixed(0);
+    document.getElementById('eff').textContent=(((state.sst+273.15-res.TO)/res.TO)*100).toFixed(0)+'%';
+    document.getElementById('catBadge').textContent=cat.name;
+    document.getElementById('vmaxCard').style.background=`linear-gradient(135deg,${cat.c},${shade(cat.c,-22)})`;
+    iflp.textContent='solved';flag.textContent='';
+  }
+  drawSkewT(state.prof,state.sst,res);
+  drawSensitivity(state.prof,state.sst,opts);
+  updateStats(res);
+}
+function updateStats(res){
+  const ok=!isNaN(res.VMAX)&&res.IFL===1;
+  const capeSat=ok&&!isNaN(res.CAPEMS)?Math.round(res.CAPEMS):null;
+  const capeB=ok&&!isNaN(res.CAPEA)?Math.round(res.CAPEA):null;
+  const items=[
+    ['Ocean-parcel CAPE', capeSat!=null?capeSat+' J/kg':'—'],
+    ['Near-surface CAPE', capeB!=null?capeB+' J/kg':'—'],
+    ['LCL', lclP(state.prof).toFixed(0)+' hPa'],
+    ['PWAT', pwatMM(state.prof).toFixed(1)+' mm'],
+    ['Outflow T₀', ok?(res.TO-273.15).toFixed(0)+' °C':'—'],
+  ];
+  document.getElementById('stats').innerHTML=items.map(([l,v])=>`<div class="stat"><span>${l}</span> <b>${v}</b></div>`).join('');
+}
+
+/* controls */
+document.getElementById('sst').addEventListener('input',e=>{state.sst=+e.target.value;document.getElementById('sstv').textContent=state.sst.toFixed(1);render();});
+document.getElementById('mslp').addEventListener('input',e=>{state.mslp=+e.target.value;document.getElementById('mslpv').textContent=state.mslp;render();});
+document.getElementById('ckcd').addEventListener('input',e=>{state.ckcd=+e.target.value;document.getElementById('ckcdv').textContent=state.ckcd.toFixed(2);render();});
+document.getElementById('diss').addEventListener('change',e=>{state.diss=e.target.checked?1:0;render();});
+document.querySelectorAll('#ascent button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#ascent button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.ascent=+b.dataset.v;render();}));
+window.addEventListener('resize',()=>{_bg=null;render();});
+
+/* SounderPy figure export (optional backend) */
+const modal=document.getElementById('modal');
+document.getElementById('modalX').onclick=()=>modal.classList.remove('on');
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('on');});
+document.getElementById('exportBtn').addEventListener('click',async()=>{
+  modal.classList.add('on');
+  const body=document.getElementById('modalBody'),dl=document.getElementById('dlLink');
+  dl.style.display='none';
+  body.innerHTML='<div class="note" style="display:flex;align-items:center;gap:10px"><span class="spinner"></span> Rendering with SounderPy… (the first call can take ~10 s)</div>';
+  const url=document.getElementById('backendUrl').value.trim();
+  const payload={sst:state.sst,mslp:state.mslp,diss:state.diss,ckcd:state.ckcd,ascent:state.ascent,
+    prof:state.prof.map(r=>({p:r.p,T:r.T,Td:r.Td}))};
+  try{
+    const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const blob=await resp.blob();const obj=URL.createObjectURL(blob);
+    body.innerHTML='<img src="'+obj+'" alt="SounderPy sounding with PI overlays">';
+    dl.href=obj;dl.style.display='inline-flex';
+  }catch(err){
+    body.innerHTML='<div class="note"><b>Could not reach the SounderPy backend.</b><br><br>'+
+      'The live tool above keeps working without it. To generate the full SounderPy figure, run the local server:<br><br>'+
+      '<code>pip install -r requirements.txt</code><br><code>python server.py</code><br><br>'+
+      'then open the page at <code>http://localhost:5000</code> and try again.<br><span style="color:#9aa8b3">('+err.message+')</span></div>';
+  }
+});
+
+buildTable();render();
+</script>
+</body>
+</html>
