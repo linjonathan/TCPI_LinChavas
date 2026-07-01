@@ -210,7 +210,7 @@ function pi(SSTC, MSL, P, TC, Rgkg, opts = {}) {
   let TO = NaN, OTL = NaN, TVAV = NaN, RAT = NaN, CAPEM = NaN, CAPEMS = NaN;
 
   while (Math.abs(PNEW - PMOLD) > 0.5) {
-    // parcels at the R_max pressure PM (pdep on) or background MSL (pdep off)
+    // parcels at the R_max pressure PM (pdep on) or the surface pressure (pdep off)
     const PPeval = pdep ? Math.min(PM, 1000.0) : Math.min(MSL, 1000.0);
     // CAPE at radius of max winds
     let TP = T[NK];

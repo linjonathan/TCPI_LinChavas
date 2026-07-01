@@ -425,8 +425,7 @@ function pi(SSTC,MSL,P,TC,Rgkg,o={}){
   let r=cape(T[NK],R[NK],P[NK],T,R,P,af,pt);const CAPEA=r.CAPED;let IFL=1;if(r.IFLAG!==1)IFL=r.IFLAG;
   let NP=0,PM=970,PMOLD=PM,PNEW=0,TO=NaN,OTL=NaN,TVAV=NaN,RAT=NaN,CAPEM=NaN,CAPEMS=NaN;
   while(Math.abs(PNEW-PMOLD)>0.5){
-    // parcels evaluated at the R_max pressure PM (pressure dependence ON) or at the
-    // background surface pressure MSL (OFF) — isolates the WISHE moisture feedback.
+    // parcels evaluated at the R_max pressure PM (pressure dependence ON) or the surface pressure (OFF)
     const PPeval=pdep?Math.min(PM,1000):Math.min(MSL,1000);
     let TP=T[NK],PP=PPeval,RP=K.EPS*R[NK]*MSL/(PP*(K.EPS+R[NK])-R[NK]*MSL);
     r=cape(TP,RP,PP,T,R,P,af,pt);CAPEM=r.CAPED;if(r.IFLAG!==1)IFL=r.IFLAG;
@@ -764,6 +763,7 @@ function drawAnnot(ctx,g,res,sst,ok){
   const lines=storm?[
     ['Potential intensity','head'],
     ['Vₘₐₓ  '+res.VMAX.toFixed(1)+' m/s · '+Math.round(res.VMAX*1.94384)+' kt','big'],
+    ['ΔP  '+(state.mslp-res.PMIN).toFixed(0)+' hPa','sub'],
     ['Pₘᵢₙ  '+res.PMIN.toFixed(0)+' hPa','sub'],
     ['T₀  '+(res.TO-273.15).toFixed(0)+'°C  @ '+res.OTL.toFixed(0)+' hPa','sub'],
     ['● '+cat.name,'cat']
