@@ -254,7 +254,7 @@ function pi(SSTC, MSL, P, TC, Rgkg, opts = {}) {
   const FAC = Math.max(0.0, CAPEMS - CAPEM);
   const VMAX = V_reduc * Math.sqrt(CKCD * RAT * FAC);
 
-  return { VMAX, PMIN, IFL, TO, OTL };
+  return { VMAX, PMIN, IFL, TO, OTL, CAPEMS, CAPEA, PM };  // PM = converged R_max pressure
 }
 
 if (typeof module !== 'undefined' && module.exports) {

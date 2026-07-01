@@ -440,7 +440,7 @@ function pi(SSTC,MSL,P,TC,Rgkg,o={}){
   const CF=0.5*(1+1/K.b);let CAT=Math.max((CAPEM-CAPEA)+CKCD*RAT*CF*(CAPEMS-CAPEM),0);
   const PMIN=MSL*Math.exp(-CAT/(K.RD*TVAV));const FAC=Math.max(0,CAPEMS-CAPEM);
   const VMAX=Vr*Math.sqrt(CKCD*RAT*FAC);
-  return{VMAX,PMIN,IFL,TO,OTL,CAPEMS,CAPEA};}
+  return{VMAX,PMIN,IFL,TO,OTL,CAPEMS,CAPEA,PM};}   // PM = converged R_max pressure (parcel launch level)
 
 /* density-temperature (°C) of a parcel lifted from the surface.
    r0 = surface mixing ratio (g/g); af = ascent flag (0 reversible, 1 pseudo) */
@@ -640,10 +640,16 @@ function drawSkewT(prof,sst,res){
   const P=prof.map(r=>r.p),p0=P[0];const af=state.ascent;
   const Rgg=prof.map(r=>mixingRatio(r.Td,r.p)/1000);
   const envDen=prof.map((r,i)=>T_ktoC(Trho(T_Ctok(r.T),Rgg[i],Rgg[i])));
-  const r0sat=rv(es_cc(sst),p0);
-  const oceanDen=liftParcelTrho(sst,p0,r0sat,P,af);
-  const r0bl=mixingRatio(prof[0].Td,p0)/1000;
-  const blDen=liftParcelTrho(prof[0].T,p0,r0bl,P,af);
+  // Parcel launch pressure: the R_max pressure PM when pressure-dependence is ON (more humid,
+  // ∝1/p), or the background surface pressure when OFF — matching the pi() calculation so the
+  // drawn parcel paths and shaded CAPE areas track the toggle.
+  const smr=mixingRatio(prof[0].Td,p0)/1000;                 // surface mixing ratio (g/g)
+  let Plaunch=Math.min(state.mslp,1000);
+  if(state.pdep && res && res.IFL===1 && !isNaN(res.PM)) Plaunch=Math.min(res.PM,1000);
+  const r0sat=rv(es_cc(sst),Plaunch);                        // ocean parcel: saturated at the launch pressure
+  const oceanDen=liftParcelTrho(sst,Plaunch,r0sat,P,af);
+  const r0bl=K.EPS*smr*state.mslp/(Plaunch*(K.EPS+smr)-smr*state.mslp);  // near-surface parcel: r adjusted to launch p
+  const blDen=liftParcelTrho(prof[0].T,Plaunch,r0bl,P,af);
 
   ctx.save();ctx.beginPath();ctx.rect(g.mL,g.mT,g.W,g.H);ctx.clip();ctx.lineJoin='round';
 
@@ -727,19 +733,27 @@ function drawSkewT(prof,sst,res){
     ctx.fillStyle='#243441';ctx.font='700 10.5px -apple-system';ctx.textAlign='left';ctx.textBaseline='middle';
     ctx.fillText('T₀ (outflow)',xo+8,y+1);
   }
-  // SST markers at surface
-  const ys=g.yP(p0);
-  const xsst=g.xT(sst,p0);
-  const sstTv=T_ktoC(Trho(T_Ctok(sst),r0sat,r0sat));
-  const xtv=g.xT(sstTv,p0);
-  // SST density-temp square (magenta)
-  ctx.fillStyle=getCSS('--parcel');roundRect(ctx,xtv-5,ys-5,10,10,2);ctx.fill();
-  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
-  // SST dot (blue)
+  // R_max launch-pressure reference line (shown when parcels launch above the surface, i.e. pdep on)
+  if(state.pdep && Plaunch < p0-2){
+    const yl=g.yP(Plaunch);
+    ctx.save();ctx.beginPath();ctx.rect(g.mL,g.mT,g.W,g.H);ctx.clip();
+    ctx.strokeStyle='rgba(177,35,158,.35)';ctx.lineWidth=1;ctx.setLineDash([2,3]);
+    ctx.beginPath();ctx.moveTo(g.mL,yl);ctx.lineTo(g.mL+g.W,yl);ctx.stroke();ctx.setLineDash([]);
+    ctx.restore();
+    ctx.fillStyle='rgba(150,30,130,0.9)';ctx.font='600 9.5px -apple-system';ctx.textAlign='left';ctx.textBaseline='bottom';
+    ctx.fillText('p(Rₘₐₓ) = '+Plaunch.toFixed(0),g.mL+4,yl-2);
+  }
+  // SST dot (blue) at the ocean surface
+  const ys=g.yP(p0), xsst=g.xT(sst,p0);
   ctx.fillStyle=getCSS('--sea');ctx.beginPath();ctx.arc(xsst,ys,5.5,0,7);ctx.fill();
   ctx.strokeStyle='#fff';ctx.lineWidth=1.6;ctx.stroke();
   ctx.fillStyle=getCSS('--sea');ctx.font='600 10.5px -apple-system';ctx.textAlign='center';ctx.textBaseline='top';
   ctx.fillText('Tₛ '+sst.toFixed(0)+'°',xsst,ys+8);
+  // ocean-parcel launch density temperature (magenta square) at the launch level
+  const sstTv=T_ktoC(Trho(T_Ctok(sst),r0sat,r0sat));
+  const yL=g.yP(Plaunch), xtv=g.xT(sstTv,Plaunch);
+  ctx.fillStyle=getCSS('--parcel');roundRect(ctx,xtv-5,yL-5,10,10,2);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
 
   // on-plot PI annotation
   drawAnnot(ctx,g,res,sst,ok);
