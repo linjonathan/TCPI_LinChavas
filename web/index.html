@@ -743,8 +743,8 @@ function drawSkewT(prof,sst,res){
     ctx.fillStyle='rgba(150,30,130,0.9)';ctx.font='600 9.5px -apple-system';ctx.textAlign='left';ctx.textBaseline='bottom';
     ctx.fillText('p(Rₘₐₓ) = '+Plaunch.toFixed(0),g.mL+4,yl-2);
   }
-  // SST dot (blue) at the ocean surface
-  const ys=g.yP(p0), xsst=g.xT(sst,p0);
+  // SST dot (blue) at the sea surface — which sits at the launch pressure (R_max pressure when pdep on)
+  const ys=g.yP(Plaunch), xsst=g.xT(sst,Plaunch);
   ctx.fillStyle=getCSS('--sea');ctx.beginPath();ctx.arc(xsst,ys,5.5,0,7);ctx.fill();
   ctx.strokeStyle='#fff';ctx.lineWidth=1.6;ctx.stroke();
   ctx.fillStyle=getCSS('--sea');ctx.font='600 10.5px -apple-system';ctx.textAlign='center';ctx.textBaseline='top';
