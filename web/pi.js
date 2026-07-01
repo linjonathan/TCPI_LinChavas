@@ -183,6 +183,7 @@ function pi(SSTC, MSL, P, TC, Rgkg, opts = {}) {
   const V_reduc = opts.V_reduc ?? 0.8;
   const ptop = opts.ptop ?? 50;
   const miss_handle = opts.miss_handle ?? 1;
+  const pdep = opts.pressDep ?? true;   // parcels at R_max pressure (true) or background MSL (false)
 
   const SSTK = T_Ctok(SSTC);
   const T = TC.map(T_Ctok);
@@ -209,9 +210,11 @@ function pi(SSTC, MSL, P, TC, Rgkg, opts = {}) {
   let TO = NaN, OTL = NaN, TVAV = NaN, RAT = NaN, CAPEM = NaN, CAPEMS = NaN;
 
   while (Math.abs(PNEW - PMOLD) > 0.5) {
+    // parcels at the R_max pressure PM (pdep on) or background MSL (pdep off)
+    const PPeval = pdep ? Math.min(PM, 1000.0) : Math.min(MSL, 1000.0);
     // CAPE at radius of max winds
     let TP = T[NK];
-    let PP = Math.min(PM, 1000.0);
+    let PP = PPeval;
     let RP = C.EPS * R[NK] * MSL / (PP * (C.EPS + R[NK]) - R[NK] * MSL);
     res = cape(TP, RP, PP, T, R, P, ascent_flag, ptop, miss_handle);
     CAPEM = res.CAPED;
@@ -219,7 +222,7 @@ function pi(SSTC, MSL, P, TC, Rgkg, opts = {}) {
 
     // saturation CAPE at radius of max winds
     TP = SSTK;
-    PP = Math.min(PM, 1000.0);
+    PP = PPeval;
     RP = rv(ES0, PP);
     res = cape(TP, RP, PP, T, R, P, ascent_flag, ptop, miss_handle);
     CAPEMS = res.CAPED;

@@ -164,6 +164,8 @@
       <div class="bd">
         <div class="switchrow"><span>Dissipative heating</span>
           <label class="switch"><input id="diss" type="checkbox" checked><span class="slider"></span></label></div>
+        <div class="switchrow"><span title="Evaluate the surface parcels at the depressed R_max pressure (WISHE feedback) vs. at background surface pressure">Parcel pressure dependence <span style="font-weight:400;color:var(--muted)">(R<sub>max</sub>)</span></span>
+          <label class="switch"><input id="pdep" type="checkbox" checked><span class="slider"></span></label></div>
         <div class="ctl">
           <label>Exchange ratio <span class="val">C<sub>k</sub>/C<sub>D</sub> = <span id="ckcdv">0.90</span></span></label>
           <input id="ckcd" type="range" min="0.5" max="1.2" step="0.05" value="0.9">
@@ -415,7 +417,7 @@ function cape(TP,RP,PP,T_in,R_in,P_in,af=0,pt=50){
     TOB=(T[INB]*(PINB-P[INB+1])+T[INB+1]*(P[INB]-PINB))/(P[INB]-P[INB+1]);}
   return{CAPED:Math.max(PA+PAT-NA,0),TOB,LNB,IFLAG:1};}
 function pi(SSTC,MSL,P,TC,Rgkg,o={}){
-  const CKCD=o.CKCD??0.9,af=o.ascent_flag??0,diss=o.diss_flag??1,Vr=o.V_reduc??0.8,pt=o.ptop??50;
+  const CKCD=o.CKCD??0.9,af=o.ascent_flag??0,diss=o.diss_flag??1,Vr=o.V_reduc??0.8,pt=o.ptop??50,pdep=o.pressDep??true;
   const SSTK=T_Ctok(SSTC);const T=TC.map(T_Ctok);const R=Rgkg.map(r=>isNaN(r)?0:r*0.001);
   if(SSTC<=5||SSTC>100||isNaN(SSTC))return{VMAX:NaN,PMIN:NaN,IFL:0,TO:NaN,OTL:NaN};
   if(Math.min(...T)<=100||Math.max(...TC)>100)return{VMAX:NaN,PMIN:NaN,IFL:0,TO:NaN,OTL:NaN};
@@ -423,9 +425,12 @@ function pi(SSTC,MSL,P,TC,Rgkg,o={}){
   let r=cape(T[NK],R[NK],P[NK],T,R,P,af,pt);const CAPEA=r.CAPED;let IFL=1;if(r.IFLAG!==1)IFL=r.IFLAG;
   let NP=0,PM=970,PMOLD=PM,PNEW=0,TO=NaN,OTL=NaN,TVAV=NaN,RAT=NaN,CAPEM=NaN,CAPEMS=NaN;
   while(Math.abs(PNEW-PMOLD)>0.5){
-    let TP=T[NK],PP=Math.min(PM,1000),RP=K.EPS*R[NK]*MSL/(PP*(K.EPS+R[NK])-R[NK]*MSL);
+    // parcels evaluated at the R_max pressure PM (pressure dependence ON) or at the
+    // background surface pressure MSL (OFF) — isolates the WISHE moisture feedback.
+    const PPeval=pdep?Math.min(PM,1000):Math.min(MSL,1000);
+    let TP=T[NK],PP=PPeval,RP=K.EPS*R[NK]*MSL/(PP*(K.EPS+R[NK])-R[NK]*MSL);
     r=cape(TP,RP,PP,T,R,P,af,pt);CAPEM=r.CAPED;if(r.IFLAG!==1)IFL=r.IFLAG;
-    TP=SSTK;PP=Math.min(PM,1000);RP=rv(ES0,PP);
+    TP=SSTK;PP=PPeval;RP=rv(ES0,PP);
     r=cape(TP,RP,PP,T,R,P,af,pt);CAPEMS=r.CAPED;if(r.IFLAG!==1)IFL=r.IFLAG;TO=r.TOB;OTL=r.LNB;
     RAT=SSTK/TO;if(diss===0)RAT=1;
     const TV0=Trho(T[NK],R[NK],R[NK]),TVS=Trho(SSTK,RP,RP);TVAV=0.5*(TV0+TVS);
@@ -524,7 +529,7 @@ const PRESETS={
   "Marginal (cool SST)":{sst:26,mslp:1010,prof:BASE.map(r=>({...r}))},
   "Dry mid-levels":{sst:29,mslp:1010,prof:BASE.map(r=>(r.p<=850&&r.p>=500?{...r,Td:r.Td-12}:{...r}))},
 };
-let state={sst:30,mslp:1010,ckcd:0.9,diss:1,ascent:0,prof:PRESETS["Idealized 30C moist adiabat"].prof.map(r=>({...r}))};
+let state={sst:30,mslp:1010,ckcd:0.9,diss:1,ascent:0,pdep:1,prof:PRESETS["Idealized 30C moist adiabat"].prof.map(r=>({...r}))};
 
 const presetsEl=document.getElementById('presets');
 Object.keys(PRESETS).forEach(name=>{const b=document.createElement('button');b.textContent=name;
@@ -817,7 +822,7 @@ function shade(hex,p){const n=parseInt(hex.slice(1),16);let r=(n>>16)+p,gg=((n>>
   r=Math.max(0,Math.min(255,r));gg=Math.max(0,Math.min(255,gg));b=Math.max(0,Math.min(255,b));
   return'#'+(r<<16|gg<<8|b).toString(16).padStart(6,'0');}
 function render(){
-  const opts={CKCD:state.ckcd,ascent_flag:state.ascent,diss_flag:state.diss};
+  const opts={CKCD:state.ckcd,ascent_flag:state.ascent,diss_flag:state.diss,pressDep:state.pdep===1};
   const P=state.prof.map(r=>r.p),TC=state.prof.map(r=>r.T),R=state.prof.map(r=>mixingRatio(r.Td,r.p));
   const res=pi(state.sst,state.mslp,P,TC,R,opts);window._lastPI=res;
   const flag=document.getElementById('flag'),iflp=document.getElementById('iflpill');
@@ -864,6 +869,7 @@ document.getElementById('sst').addEventListener('input',e=>{state.sst=+e.target.
 document.getElementById('mslp').addEventListener('input',e=>{state.mslp=+e.target.value;document.getElementById('mslpv').textContent=state.mslp;render();});
 document.getElementById('ckcd').addEventListener('input',e=>{state.ckcd=+e.target.value;document.getElementById('ckcdv').textContent=state.ckcd.toFixed(2);render();});
 document.getElementById('diss').addEventListener('change',e=>{state.diss=e.target.checked?1:0;render();});
+document.getElementById('pdep').addEventListener('change',e=>{state.pdep=e.target.checked?1:0;render();});
 document.querySelectorAll('#ascent button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#ascent button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.ascent=+b.dataset.v;render();}));
 window.addEventListener('resize',()=>{_bg=null;render();});
