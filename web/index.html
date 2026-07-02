@@ -166,6 +166,10 @@
           <label class="switch"><input id="diss" type="checkbox" checked><span class="slider"></span></label></div>
         <div class="switchrow"><span title="Evaluate the surface parcels at the depressed R_max pressure (WISHE feedback) vs. at background surface pressure">Parcel pressure dependence <span style="font-weight:400;color:var(--muted)">(R<sub>max</sub>)</span></span>
           <label class="switch"><input id="pdep" type="checkbox" checked><span class="slider"></span></label></div>
+        <div class="switchrow"><span title="Vapor (virtual-temperature) buoyancy term (1+r_v/ε)/(1+r_v) in the density temperature">Virtual-temperature effect <span style="font-weight:400;color:var(--muted)">(vapor)</span></span>
+          <label class="switch"><input id="vtemp" type="checkbox" checked><span class="slider"></span></label></div>
+        <div class="switchrow"><span title="Condensate (water) loading term (1+r_v)/(1+r_T) in the density temperature — parcel only">Condensate loading <span style="font-weight:400;color:var(--muted)">(water)</span></span>
+          <label class="switch"><input id="cond" type="checkbox" checked><span class="slider"></span></label></div>
         <div class="ctl">
           <label>Exchange ratio <span class="val">C<sub>k</sub>/C<sub>D</sub> = <span id="ckcdv">0.90</span></span></label>
           <input id="ckcd" type="range" min="0.5" max="1.2" step="0.05" value="0.9">
@@ -384,7 +388,10 @@ const es_cc=tc=>6.112*Math.exp(17.67*tc/(243.5+tc));
 const Lv=tc=>K.ALV0+K.CPVMCL*tc;
 const ev=(R,P)=>R*P/(K.EPS+R);
 const rv=(E,P)=>K.EPS*E/(P-E);
-const Trho=(T,RT,R)=>T*(1+R/K.EPS)/(1+RT);
+// density temperature, decomposed: vapor (virtual-temp) correction × condensate-loading correction.
+// Both flags true → T*(1+R/EPS)/(1+RT), the full density temperature.
+let TRHO_V=true,TRHO_C=true;
+const Trho=(T,RT,R)=>T*(TRHO_V?(1+R/K.EPS)/(1+R):1)*(TRHO_C?(1+R)/(1+RT):1);
 const e_pLCL=(TP,RH,PP)=>PP*Math.pow(RH,TP/(K.A-K.B*RH-TP));
 function entropy_S(T,R,P){const EV=ev(R,P);const ES=es_cc(T-273.15);const RH=Math.min(EV/ES,1);const ALV=Lv(T-273.15);
   return (K.CPD+R*K.CL)*Math.log(T)-K.RD*Math.log(P-EV)+ALV*R/T-R*K.RV*Math.log(RH);}
@@ -528,7 +535,7 @@ const PRESETS={
   "Marginal (cool SST)":{sst:26,mslp:1010,prof:BASE.map(r=>({...r}))},
   "Dry mid-levels":{sst:29,mslp:1010,prof:BASE.map(r=>(r.p<=850&&r.p>=500?{...r,Td:r.Td-12}:{...r}))},
 };
-let state={sst:30,mslp:1010,ckcd:0.9,diss:1,ascent:0,pdep:1,prof:PRESETS["Idealized 30C moist adiabat"].prof.map(r=>({...r}))};
+let state={sst:30,mslp:1010,ckcd:0.9,diss:1,ascent:0,pdep:1,vtemp:1,cond:1,prof:PRESETS["Idealized 30C moist adiabat"].prof.map(r=>({...r}))};
 
 const presetsEl=document.getElementById('presets');
 Object.keys(PRESETS).forEach(name=>{const b=document.createElement('button');b.textContent=name;
@@ -836,6 +843,7 @@ function shade(hex,p){const n=parseInt(hex.slice(1),16);let r=(n>>16)+p,gg=((n>>
   r=Math.max(0,Math.min(255,r));gg=Math.max(0,Math.min(255,gg));b=Math.max(0,Math.min(255,b));
   return'#'+(r<<16|gg<<8|b).toString(16).padStart(6,'0');}
 function render(){
+  TRHO_V=state.vtemp===1; TRHO_C=state.cond===1;   // density-temperature decomposition (used by pi() + drawing)
   const opts={CKCD:state.ckcd,ascent_flag:state.ascent,diss_flag:state.diss,pressDep:state.pdep===1};
   const P=state.prof.map(r=>r.p),TC=state.prof.map(r=>r.T),R=state.prof.map(r=>mixingRatio(r.Td,r.p));
   const res=pi(state.sst,state.mslp,P,TC,R,opts);window._lastPI=res;
@@ -884,6 +892,8 @@ document.getElementById('mslp').addEventListener('input',e=>{state.mslp=+e.targe
 document.getElementById('ckcd').addEventListener('input',e=>{state.ckcd=+e.target.value;document.getElementById('ckcdv').textContent=state.ckcd.toFixed(2);render();});
 document.getElementById('diss').addEventListener('change',e=>{state.diss=e.target.checked?1:0;render();});
 document.getElementById('pdep').addEventListener('change',e=>{state.pdep=e.target.checked?1:0;render();});
+document.getElementById('vtemp').addEventListener('change',e=>{state.vtemp=e.target.checked?1:0;render();});
+document.getElementById('cond').addEventListener('change',e=>{state.cond=e.target.checked?1:0;render();});
 document.querySelectorAll('#ascent button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#ascent button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.ascent=+b.dataset.v;render();}));
 window.addEventListener('resize',()=>{_bg=null;render();});
