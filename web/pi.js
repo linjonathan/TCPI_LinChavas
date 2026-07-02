@@ -24,10 +24,10 @@ const es_cc  = (TC) => 6.112 * Math.exp(17.67 * TC / (243.5 + TC));   // hPa
 const Lv     = (TC) => C.ALV0 + C.CPVMCL * TC;                         // J/kg
 const ev     = (R, P) => R * P / (C.EPS + R);                          // hPa
 const rv     = (E, P) => C.EPS * E / (P - E);                          // g/g
-// density temperature, decomposed into vapor (virtual-temp) and condensate-loading corrections;
-// both flags true → T*(1+R/EPS)/(1+RT), the full density temperature.
-let TRHO_V = true, TRHO_C = true;
-const Trho   = (T, RT, R) => T * (TRHO_V ? (1 + R / C.EPS) / (1 + R) : 1) * (TRHO_C ? (1 + R) / (1 + RT) : 1); // K
+// density temperature. TRHO_V toggles the vapor (virtual-temperature) buoyancy term; condensate
+// loading (1+R)/(1+RT) is always applied, its magnitude set by RT (reversible vs pseudo-adiabatic).
+let TRHO_V = true;
+const Trho   = (T, RT, R) => T * (TRHO_V ? (1 + R / C.EPS) / (1 + R) : 1) * (1 + R) / (1 + RT); // K
 const e_pLCL = (TP, RH, PP) => PP * Math.pow(RH, TP / (C.A - C.B * RH - TP));
 
 function entropy_S(T, R, P) {
@@ -187,8 +187,7 @@ function pi(SSTC, MSL, P, TC, Rgkg, opts = {}) {
   const ptop = opts.ptop ?? 50;
   const miss_handle = opts.miss_handle ?? 1;
   const pdep = opts.pressDep ?? true;   // parcels at R_max pressure (true) or background MSL (false)
-  TRHO_V = opts.useVapor ?? true;       // density-temperature decomposition:
-  TRHO_C = opts.useCond ?? true;        //   vapor (virtual-temp) and condensate-loading terms
+  TRHO_V = opts.useVapor ?? true;       // toggle the vapor (virtual-temperature) buoyancy term
 
   const SSTK = T_Ctok(SSTC);
   const T = TC.map(T_Ctok);
