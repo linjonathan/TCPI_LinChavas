@@ -81,6 +81,16 @@ def pijs():
     return send_from_directory(HERE, "pi.js")
 
 
+@app.route("/carnot-cape.html")
+def carnot_cape():
+    return send_from_directory(HERE, "carnot-cape.html")
+
+
+@app.route("/assets/<path:filename>")
+def assets(filename):
+    return send_from_directory(os.path.join(HERE, "assets"), filename)
+
+
 @app.route("/api/figure", methods=["POST", "OPTIONS"])
 def figure():
     if request.method == "OPTIONS":

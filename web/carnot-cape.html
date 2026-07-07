@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The CAPE and Carnot Forms of Potential Intensity</title>
+<style>
+  :root{
+    --bg:#f7f9fb; --panel:#ffffff; --ink:#16222e; --muted:#5b6b78;
+    --line:#e2e8ee; --accent:#0e7c9b; --accent2:#0a5d75;
+    --warm:#d24b3e; --cool:#1f8a5b; --parcel:#b1239e; --sea:#1763b8; --gray:#7e8c98;
+    --shadow:0 1px 3px rgba(20,40,60,.06),0 6px 20px rgba(20,40,60,.06);
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:26px 20px 80px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .backlink{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;
+    color:var(--muted);margin-bottom:18px}
+  .backlink:hover{color:var(--accent);text-decoration:none}
+
+  header.hero{margin-bottom:8px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  h1{font-size:clamp(25px,3.2vw,34px);line-height:1.14;margin:6px 0 10px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:15.5px}
+
+  h2{font-size:23px;letter-spacing:-.01em;margin:38px 0 10px;padding-top:10px}
+  h3{font-size:17px;margin:24px 0 6px}
+  p{color:#2b3a47}
+  .lead{font-size:16px}
+  em{color:#1d2b38}
+
+  /* the two-forms comparison */
+  .forms{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0 6px}
+  @media(max-width:640px){.forms{grid-template-columns:1fr}}
+  .formcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:var(--shadow);padding:18px 20px;position:relative;overflow:hidden}
+  .formcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+  .formcard.cape::before{background:var(--parcel)}
+  .formcard .tag{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--accent2)}
+  .formcard.cape .tag{color:var(--parcel)}
+  .formcard .nm{font-weight:700;font-size:15px;margin:2px 0 10px}
+  .formcard .eqn{font-size:15px;overflow-x:auto}
+  .formcard p{font-size:13px;color:var(--muted);margin:12px 0 0}
+  .equiv{display:flex;align-items:center;justify-content:center;margin:6px 0 2px;
+    font-size:13px;color:var(--muted);font-weight:600}
+  .equiv span{background:#eef4f7;color:var(--accent2);border-radius:20px;padding:5px 14px;border:1px solid var(--line)}
+
+  /* callout / boxed result */
+  .callout{background:#eef4f7;border:1px solid #d3e3ea;border-left:4px solid var(--accent);
+    border-radius:10px;padding:14px 18px;margin:18px 0;font-size:14.5px;color:#20323d}
+  .callout.warm{background:#fbeeec;border-color:#f0cfc9;border-left-color:var(--warm)}
+  .callout .h{font-weight:700;display:block;margin-bottom:3px}
+
+  /* figures */
+  figure{margin:22px 0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:var(--shadow);padding:18px 18px 14px;text-align:center}
+  figure img{width:100%;max-width:440px;height:auto;border-radius:8px}
+  figcaption{font-size:13px;color:var(--muted);margin-top:12px;text-align:left;line-height:1.5}
+  figcaption b{color:var(--ink)}
+
+  /* terms */
+  .terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:18px 0}
+  .term{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow)}
+  .term .sym{font-size:16px;font-weight:800;color:var(--accent2)}
+  .term p{font-size:12.5px;color:var(--muted);margin:5px 0 0}
+
+  .steps{border-left:2px solid var(--line);margin:16px 0 16px 6px;padding-left:18px}
+  .steps p{margin:10px 0}
+
+  .foot{margin-top:40px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+  .pill{display:inline-block;background:#eef4f7;color:var(--accent2);border-radius:6px;padding:1px 7px;font-size:12px;font-weight:700}
+  mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%}
+</style>
+<script>
+  window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},
+    svg:{fontCache:'global'},chtml:{scale:1.0}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="backlink" href="index.html">← Back to the interactive sounding tool</a>
+
+  <header class="hero">
+    <div class="eyebrow">Tropical Meteorology · Theory note</div>
+    <h1>The CAPE and Carnot Forms of Potential Intensity</h1>
+    <p class="sub">Potential intensity is usually written two ways — as a Carnot heat-engine efficiency acting
+    on the air–sea enthalpy disequilibrium, and as a difference of convective available potential energies.
+    They look unrelated but, under certain approximations, are equivalent. </p>
+  </header>
+
+  <h2>Two forms, one theory</h2>
+  <p class="lead">The interactive tool reports <span class="pill">V<sub>max</sub></span> from the CAPE
+  difference, yet the physical, intuitive explanation is a Carnot cycle. Here are the two expressions the theory delivers:</p>
+
+  <div class="forms">
+    <div class="formcard">
+      <div class="tag">Carnot / air–sea form</div>
+      <div class="nm">Efficiency × disequilibrium</div>
+      <div class="eqn">\[ V_p^{2}=\frac{C_k}{C_D}\,\frac{T_s-T_0}{T_s}\,\bigl(k_0^{*}-k_b\bigr) \]</div>
+      <p>A heat engine of Carnot efficiency \((T_s-T_0)/T_s\) working on the air–sea enthalpy contrast
+      \(k_0^{*}-k_b\).</p>
+    </div>
+    <div class="formcard cape">
+      <div class="tag">CAPE form</div>
+      <div class="nm">Difference of two CAPEs</div>
+      <div class="eqn">\[ V_p^{2}=\frac{C_k}{C_D}\,\bigl(\mathrm{CAPE}^{*}-\mathrm{CAPE}_b\bigr) \]</div>
+      <p>Saturation CAPE of a parcel at the sea surface minus the CAPE of the actual boundary-layer air —
+      a quantity read directly off a sounding.</p>
+    </div>
+  </div>
+  <div class="equiv"><span>When and how are these two quantities identical?</span></div>
+
+  <p>The bridge between them is a single thermodynamic identity,
+  \(\bigl(k_0^{*}-k_b\bigr)\,\dfrac{T_s-T_0}{T_s}\approx \mathrm{CAPE}^{*}-\mathrm{CAPE}_b\). To get to this 
+  identity, we need to make a few assumptions, following the work of <a href="https://journals.ametsoc.org/view/journals/clim/35/3/JCLI-D-21-0360.1.xml" target="_blank">Rousseau-Rizzi et al. (2022)</a>.</p>
+
+  <h2>The Carnot Form of Potential Intensity</h2>
+  <p>In this form, we idealize the storm's overturning circulation as a Carnot cycle. Air spirals inward gaining enthalpy \(Q_H\) from the
+  warm ocean at a temperature of the sea-surface (\(T_s\)), ascends in the eyewall adiabatically, exports heat \(Q_C\) near the cold outflow at \(T_0\), 
+  and then subsides in the environment. In entropy–temperature coordinates the cycle is a simple rectangle:</p>
+
+  <figure>
+    <img src="assets/fig1_sT.png" alt="Idealized tropical-cyclone Carnot cycle in entropy–temperature coordinates">
+    <figcaption>Idealized tropical-cyclone Carnot cycle in \(s\)–\(T\) coordinates. Air flows inward and gains
+    heat \(Q_H\) from the ocean at the sea-surface temperature (\(T_s\)), ascends in the eyewall adiabatically, loses heat \(Q_C\) in the outflow at the outflow temperature (\(T_0\)), and then descends adiabatically back to the start. Adapted from <a href="https://journals.ametsoc.org/view/journals/clim/35/3/JCLI-D-21-0360.1.xml" target="_blank">Rousseau-Rizzi et al. (2022)</a>.</figcaption>
+  </figure>
+
+  <p>From classical thermodynamics, we know that the mechanical work the cycle can do on its environment (i.e. convert to wind) 
+    is the enclosed area,</p>
+  \[ W=\oint_{ABCD} T\,ds=\varepsilon\, Q_H, \]
+  <p>with \(\varepsilon=(T_s-T_0)/T_s\) the Carnot efficiency. The Carnot efficiency essentially tells us the
+    fraction of the heat input (\(Q_H\)) that can be converted to work.</p>
+
+  <p>To turn this into a wind speed, in steady-state, we assume that the heat engine's power is balanced against 
+    friction at the radius of maximum winds. The heat input \(Q_H\) is supplied by the surface enthalpy flux, so the engine <em>generates</em> mechanical
+  energy (per unit area, per unit time) at the efficiency times that flux, while surface drag
+  \(\bigl(\tau=\rho_a C_D|V|^2\bigr)\) <em>dissipates</em> kinetic energy at the rate \(\tau|V|\):</p>
+  \[ \underbrace{\varepsilon\,\rho_a\,C_k\,|V|\,\bigl(k_0^{*}-k_b\bigr)}_{\text{generation}}
+     \;=\;\underbrace{\rho_a\,C_D\,|V|^{3}}_{\text{dissipation}}. \]
+  <p>Cancel the common factor \(\rho_a|V|\) and solve for the wind speed \(|V|^2\equiv V_p^2\), and the Carnot
+  form drops straight out:</p>
+  <div class="callout">
+    <span class="h">Mechanical work → Carnot form</span>
+    \[ V_p^{2}=\frac{C_k}{C_D}\,\frac{T_s-T_0}{T_s}\,\bigl(k_0^{*}-k_b\bigr)
+       =\frac{C_k}{C_D}\,(T_s-T_0)\,\bigl(s_0^{*}-s_b\bigr). \]
+  </div>
+
+  <p>The Carnot form is wonderfully intuitive, but it is deceptively hard to actually evaluate: two of the
+  quantities it needs are not things we can simply read off atmospheric soundings.</p>
+  <div class="steps">
+    <p><strong>What is \(T_0\)?</strong> The outflow temperature is the cold reservoir of the cycle, yet it is
+    not an environmental input. It is set by where the ascending eyewall parcel finally runs out of buoyancy —
+    its level of neutral buoyancy — so \(T_0\) can only be known <em>after</em> lifting a parcel. It must be
+    diagnosed as part of the solution, not prescribed.</p>
+    <p><strong>What if \(s^{*}\) depends on pressure?</strong> The tidy rectangle assumed the isothermal legs
+    connect fixed entropy limits \(s_b\) and \(s^{*}\). While the saturation entropy \(s^{*}\) of a surface parcel
+    is primarily a function of temperature, it is also a function of pressure. This pressure dependence means that \(s^{*}\)
+    can change as the pressure falls toward the low-pressure eyewall.</p>
+  </div>
+  <p>Thus, to actually calculate potential intensity, we need to connect the Carnot cycle to quantities that we can
+    derive directly from a sounding — lifting real parcels handles \(T_0\) and the pressure dependence of \(s^{*}\)
+  automatically. That is exactly what the CAPE form does, and how potential intensity is calculated.</p>
+
+  <h2>The CAPE Form of Potential Intensity</h2>
+  <p>To connect that abstract cycle to a sounding, we start from some thermodynamic relations, which one can
+    derive from the first law of thermodynamics and the equation of state,</p>
+  \[ dk = T\,ds + \alpha\,dp,\qquad k=c_pT+L_v r,\qquad
+     s=c_p\ln T - R_d\ln p_d+\frac{L_v r}{T}-rR_v\ln\mathcal{H}, \]
+  <p>(neglecting the small mass of water vapor), where \(k\) is the specific enthalpy, \(s\) is the specific entropy, 
+    \(\alpha\) is the specific volume, \(p_d\) is the dry pressure, \(r\) is the mixing ratio, and \(\mathcal{H}\) is the relative humidity.
+    We first integrate \(dk\) once around the closed thermodynamic cycle (ABCD). Because \(k\)
+  is a state variable, its loop integral vanishes, \(\oint dk=0\), leaving,</p>
+  \[ -\oint_{ABCD}\alpha\,dp=\oint_{ABCD} T\,ds. \]
+  <p>The right side is easy: the two adiabatic legs \(BC\) and \(DA\) contribute nothing (\(ds=0\)), and the
+  two isothermal legs operate at \(T_s\) and \(T_0\) between the same entropy limits \(s_b\) and \(s^{*}\):</p>
+  \[ \oint_{ABCD} T\,ds = T_s\,(s^{*}-s_b)\;-\;T_0\,(s^{*}-s_b). \]
+  <div class="callout">
+    <span class="h">The work identity</span>
+    \[ -\oint_{ABCD}\alpha\,dp=(s^{*}-s_b)\,(T_s-T_0). \]
+    The mechanical work of the cycle equals the entropy disequilibrium times the temperature drop.
+  </div>
+  The work identity is important, since it connects the Carnot form to the CAPE form. The left-hand side is a (cycle) 
+  integral of \(\alpha\,dp\) (eerily familiar to CAPE!) that can be evaluated in pressure–specific-volume coordinates,
+   while the right-hand side is reltaed to the Carnot form of potential intensity.
+
+  <h2>Evaluating the mechanical work as a CAPE difference</h2>
+  <p>Now, we want to connect the mechanical work to CAPE. We do this intuitively by first evaluating the very same \(-\oint\alpha\,dp\) geometrically, 
+    in pressure–specific-volume coordinates. The enclosed area there <em>is</em> the net mechanical work. Notice how the thermodynamic cycle in pressure and specific-volume coordinates takes an oblong shape -- its not a simple rectangle like in temperature and entropy coordinates! </p>
+
+  <figure>
+    <img src="assets/fig2_alphap.png" alt="The Carnot cycle in pressure–specific-volume coordinates, enclosing CAPE* minus CAPE">
+    <figcaption>The same thermodynamic cycle in \(\alpha\)–\(p\) coordinates. The enclosed area equals \(-\oint\alpha\,dp\). Note, we assume that pressure is fixed in the inflow leg. Adapted from <a href="https://journals.ametsoc.org/view/journals/clim/35/3/JCLI-D-21-0360.1.xml" target="_blank">Rousseau-Rizzi et al. (2022)</a></figcaption>
+  </figure>
+
+  <p>Why is \(-\oint_{ABCD}\alpha\,dp\) equal to the difference of CAPEs? To get to this identity, we first split the cycle integral into 
+    the inflow, ascent, outflow, and descent legs, where along the near-isobaric inflow \(AB\), \(dp\approx0\), so it drops out:</p>
+  \[ \oint_{ABCD}\alpha\,dp=\int_{p_s}^{p_{01}}\alpha_{BC}\,dp+\int_{p_{01}}^{p_{02}}\alpha_{CD}\,dp
+     +\int_{p_{02}}^{p_s}\alpha_{DA}\,dp. \]
+  <p>We then perform a mathematical trick where we add and subtract an environmental profile of specific volume\(\alpha_e\) from A to D
+     (this is actually equal to zero, but lets each leg be measured against the environment),</p>
+  \[ \int_{p_s}^{p_{02}}\alpha_e\,dp-\int_{p_s}^{p_{02}}\alpha_e\,dp=0, \]
+  <p>and regroup leg by leg.</p>
+  \[ \oint_{ABCD}\alpha\,dp=\int_{p_s}^{p_{01}}\alpha_{BC}\,dp+\int_{p_{01}}^{p_{02}}\alpha_{CD}\,dp
+     -\int_{p_s}^{p_{02}}\alpha_{DA}\,dp+\int_{p_s}^{p_{02}}\alpha_e\,dp-\int_{p_s}^{p_{02}}\alpha_e\,dp. \]
+  <p>We split the two \(\alpha_e\) integrals and pair one with each parcel leg over the same pressure range, so
+  that every leg is measured against the environment:</p>
+  \[ \oint_{ABCD}\alpha\,dp=
+     \underbrace{\int_{p_s}^{p_{01}}\!\alpha_{BC}\,dp-\int_{p_s}^{p_{01}}\!\alpha_e\,dp}_{\text{ascent vs. environment}}
+     +\underbrace{\int_{p_{01}}^{p_{02}}\!\alpha_{CD}\,dp-\int_{p_{01}}^{p_{02}}\!\alpha_e\,dp}_{\text{outflow vs. environment}}
+     -\underbrace{\Bigl(\int_{p_s}^{p_{02}}\!\alpha_{DA}\,dp-\int_{p_s}^{p_{02}}\!\alpha_e\,dp\Bigr)}_{\text{descent vs. environment}}. \]
+  <p>The outflow leg \(CD\) nearly cancels if the parcel emerges at the environmental
+  specific volume, leaving two buoyancy integrals:</p>
+  \[ \oint_{ABCD}\alpha\,dp=\underbrace{\int_{p_s}^{p_{01}}\!\bigl(\alpha_{BC}-\alpha_e\bigr)\,dp}_{\text{ascent buoyancy}}
+     -\underbrace{\int_{p_s}^{p_{01}}\!\bigl(\alpha_{DA}-\alpha_e\bigr)\,dp}_{\text{descent buoyancy}}
+     +\underbrace{\int_{p_{01}}^{p_{02}}\!\bigl(\alpha_{CD}-\alpha_e\bigr)\,dp}_{\approx\,0}. \]
+  <p>Flipping the sign, the two surviving integrals are exactly CAPEs. The first integral measures the CAPE of a parcel
+    ascending from point B to C, where at point B, it is saturated and at the temperature of the ocean. The second integral 
+    measures the CAPE of a parcel that ascends from point D to A, where at point D, it is the actual boundary-layer parcel. 
+    Thus, we have the identity that connects the Carnot form to the CAPE form:</p>
+  \[ -\oint_{ABCD}\alpha\,dp\;\approx\;
+     \underbrace{-\!\int_{p_s}^{p_{01}}\!\bigl(\alpha_{BC}-\alpha_e\bigr)\,dp}_{\mathrm{CAPE}^{*}(T_s)}
+     \;-\;\underbrace{\Bigl(-\!\int_{p_s}^{p_{01}}\!\bigl(\alpha_{DA}-\alpha_e\bigr)\,dp\Bigr)}_{\mathrm{CAPE}_b(T_b, r_b)}. \]
+
+  <h2>The equivalence of the two forms</h2>
+  <p>Setting the two evaluations of the same loop integral equal gives the identity that unites the forms:</p>
+  \[ \bigl(s_0^{*}-s_b\bigr)\bigl(T_s-T_0\bigr)=\mathrm{CAPE}^{*}-\mathrm{CAPE}_b, \]
+  <p>or, converting the entropy disequilibrium to an enthalpy one via \(T\,ds\approx dk\),</p>
+  \[ \bigl(k_0^{*}-k_b\bigr)\left(\frac{T_s-T_0}{T_s}\right)\approx \mathrm{CAPE}^{*}-\mathrm{CAPE}_b. \]
+  <p>Substitute this straight into the Carnot form and the efficiency-times-disequilibrium collapses to a
+ CAPE difference:</p>
+  <div class="callout warm">
+    <span class="h">Carnot form ≡ CAPE form</span>
+    \[ V_p^{2}=\frac{C_k}{C_D}\,\frac{T_s-T_0}{T_s}\,\bigl(k_0^{*}-k_b\bigr)
+       \approx \frac{C_k}{C_D}\,\bigl(\mathrm{CAPE}^{*}-\mathrm{CAPE}_b\bigr). \]
+  </div>
+  <p>The left expression is transparent physics — efficiency times fuel — but needs \(k_0^{*}\), \(k_b\),
+  \(T_s\) and \(T_0\) as inputs. The right expression is what we can calculate directly from an atmospheric sounding:
+  lift two parcels and difference their CAPEs. The tool evaluates the right-hand side; this derivation is why
+  that number is still a Carnot speed limit.</p>
+
+  <h2>How this maps onto the interactive tool</h2>
+  <p>The <a href="index.html">sounding tool</a> computes \(\mathrm{CAPE}^{*}-\mathrm{CAPE}_b\) exactly as the
+  right-hand form prescribes — the residual purple area on its skew-T is this difference, evaluated at the
+  radius of maximum winds. Two footnotes connect the notation:</p>
+  <div class="steps">
+    <p><strong>Dissipative heating.</strong> The classic Carnot efficiency here is \((T_s-T_0)/T_s\). The tool
+    additionally lets boundary-layer frictional dissipation be recycled as a surface heat source, which
+    replaces the denominator \(T_s\) with \(T_0\) — the toggle labeled <em>dissipative heating</em>. Turn it
+    off and you recover the textbook \((T_s-T_0)/T_s\) of this note.</p>
+  </div>
+
+  <div class="foot">
+    See also Emanuel (1986); Bister &amp; Emanuel (1998, 2002);
+    Rousseau-Rizzi, Merlis &amp; Jeevanjee (2022). · <a href="index.html">Return to the interactive tool ↩</a>
+  </div>
+</div>
+</body>
+</html>
