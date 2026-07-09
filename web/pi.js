@@ -183,7 +183,7 @@ function pi(SSTC, MSL, P, TC, Rgkg, opts = {}) {
   const CKCD = opts.CKCD ?? 0.9;
   const ascent_flag = opts.ascent_flag ?? 0;
   const diss_flag = opts.diss_flag ?? 1;
-  const V_reduc = opts.V_reduc ?? 0.8;
+  const V_reduc = opts.V_reduc ?? 1.0;
   const ptop = opts.ptop ?? 50;
   const miss_handle = opts.miss_handle ?? 1;
   const pdep = opts.pressDep ?? true;   // parcels at R_max pressure (true) or background MSL (false)
@@ -258,7 +258,17 @@ function pi(SSTC, MSL, P, TC, Rgkg, opts = {}) {
   const FAC = Math.max(0.0, CAPEMS - CAPEM);
   const VMAX = V_reduc * Math.sqrt(CKCD * RAT * FAC);
 
-  return { VMAX, PMIN, IFL, TO, OTL, CAPEMS, CAPEA, PM };  // PM = converged R_max pressure
+  // Air-sea moist-enthalpy disequilibrium k0*-kb, evaluated at the converged R_max pressure PM
+  // (so it carries the WISHE pressure feedback). Computed directly from the sounding, NOT from the
+  // CAPE difference -- so a Carnot form built on it will differ from the CAPE (code) form.
+  const PPfin = pdep ? Math.min(PM, 1000.0) : Math.min(MSL, 1000.0);
+  const RS0 = rv(ES0, PPfin);                                             // sat mixing ratio at SST & PM (g/g)
+  const RB0 = C.EPS * R[NK] * MSL / (PPfin * (C.EPS + R[NK]) - R[NK] * MSL); // boundary-layer parcel mixing ratio
+  const K0STAR = C.CPD * SSTK + Lv(SSTC) * RS0;                           // ocean saturation enthalpy (J/kg)
+  const KB = C.CPD * T[NK] + Lv(T[NK] - 273.15) * RB0;                    // boundary-layer air enthalpy (J/kg)
+  const KDISEQ = K0STAR - KB;
+
+  return { VMAX, PMIN, IFL, TO, OTL, CAPEMS, CAPEM, CAPEA, PM, KDISEQ, RS0, RB0, PPfin, K0STAR, KB, TBK: T[NK] };  // PM = converged R_max pressure
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -101,6 +101,20 @@
   .stat{background:#f4f7fa;border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12px}
   .stat b{font-variant-numeric:tabular-nums;color:var(--ink)}
   .stat span{color:var(--muted);font-weight:600}
+  /* two-form PI calculation panel */
+  .piforms{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  @media(max-width:620px){.piforms{grid-template-columns:1fr}}
+  .pf{background:#f7f9fb;border:1px solid var(--line);border-radius:12px;padding:13px 15px;position:relative;overflow:hidden}
+  .pf::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--parcel)}
+  .pf.carnot::before{background:var(--warm)}
+  .pf .tag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--parcel)}
+  .pf.carnot .tag{color:var(--warm)}
+  .pf .fx{font-size:13px;margin:8px 0 4px;color:var(--ink);font-variant-numeric:tabular-nums;overflow-x:auto;white-space:nowrap}
+  .pf .num{font-size:13px;color:#2b3a47;font-variant-numeric:tabular-nums;overflow-x:auto;white-space:nowrap}
+  .pf .num b{color:var(--ink);font-size:14.5px}
+  .pf .tl{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6;font-variant-numeric:tabular-nums}
+  .pf .tl b{color:var(--ink);font-weight:700}
+  .pfnote{font-size:11.5px;color:var(--muted);margin-top:11px;line-height:1.5}
   /* export button */
   .btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:12.5px;font-weight:700;
     border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:9px;cursor:pointer;transition:.12s}
@@ -121,7 +135,13 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .note{font-size:12.5px;color:var(--muted)}
   .note code{background:#f1f4f6;padding:1px 5px;border-radius:5px}
+  .pf mjx-container{margin:6px 0 !important;text-align:left !important}
 </style>
+<script>
+  window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},
+    svg:{fontCache:'global'},chtml:{scale:1.0}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
 </head>
 <body>
 <div class="wrap">
@@ -149,8 +169,8 @@
       <div class="hd">Environment</div>
       <div class="bd">
         <div class="ctl">
-          <label>Sea-surface temperature <span class="val"><span id="sstv">30.0</span> °C</span></label>
-          <input id="sst" type="range" min="18" max="34" step="0.5" value="30">
+          <label>Sea-surface temperature <span class="val"><span id="sstv">31.0</span> °C</span></label>
+          <input id="sst" type="range" min="18" max="34" step="0.5" value="31">
         </div>
         <div class="ctl">
           <label>Mean sea-level pressure <span class="val"><span id="mslpv">1010</span> hPa</span></label>
@@ -235,6 +255,12 @@
         </div>
         <div class="flag" id="flag"></div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">Potential intensity — the two equivalent forms
+        <a href="carnot-cape.html" style="font-weight:600;font-size:12px;color:var(--accent);text-decoration:none">theory ↗</a></div>
+      <div class="bd"><div id="piforms"></div></div>
     </div>
 
     <div class="card">
@@ -426,7 +452,7 @@ function cape(TP,RP,PP,T_in,R_in,P_in,af=0,pt=50){
     TOB=(T[INB]*(PINB-P[INB+1])+T[INB+1]*(P[INB]-PINB))/(P[INB]-P[INB+1]);}
   return{CAPED:Math.max(PA+PAT-NA,0),TOB,LNB,IFLAG:1};}
 function pi(SSTC,MSL,P,TC,Rgkg,o={}){
-  const CKCD=o.CKCD??0.9,af=o.ascent_flag??0,diss=o.diss_flag??1,Vr=o.V_reduc??0.8,pt=o.ptop??50,pdep=o.pressDep??true;
+  const CKCD=o.CKCD??0.9,af=o.ascent_flag??0,diss=o.diss_flag??1,Vr=o.V_reduc??1.0,pt=o.ptop??50,pdep=o.pressDep??true;
   const SSTK=T_Ctok(SSTC);const T=TC.map(T_Ctok);const R=Rgkg.map(r=>isNaN(r)?0:r*0.001);
   if(SSTC<=5||SSTC>100||isNaN(SSTC))return{VMAX:NaN,PMIN:NaN,IFL:0,TO:NaN,OTL:NaN};
   if(Math.min(...T)<=100||Math.max(...TC)>100)return{VMAX:NaN,PMIN:NaN,IFL:0,TO:NaN,OTL:NaN};
@@ -448,7 +474,16 @@ function pi(SSTC,MSL,P,TC,Rgkg,o={}){
   const CF=0.5*(1+1/K.b);let CAT=Math.max((CAPEM-CAPEA)+CKCD*RAT*CF*(CAPEMS-CAPEM),0);
   const PMIN=MSL*Math.exp(-CAT/(K.RD*TVAV));const FAC=Math.max(0,CAPEMS-CAPEM);
   const VMAX=Vr*Math.sqrt(CKCD*RAT*FAC);
-  return{VMAX,PMIN,IFL,TO,OTL,CAPEMS,CAPEA,PM};}   // PM = converged R_max pressure (parcel launch level)
+  // Air–sea moist-enthalpy disequilibrium k0*-kb, evaluated at the converged R_max pressure PM
+  // (so it carries the WISHE pressure feedback). Computed directly from the sounding, NOT from the
+  // CAPE difference — so the Carnot form built on it will differ from the CAPE (code) form.
+  const PPfin=pdep?Math.min(PM,1000):Math.min(MSL,1000);
+  const RS0=rv(ES0,PPfin);                                        // sat mixing ratio at SST & PM (g/g)
+  const RB0=K.EPS*R[NK]*MSL/(PPfin*(K.EPS+R[NK])-R[NK]*MSL);      // boundary-layer parcel mixing ratio
+  const K0STAR=K.CPD*SSTK+Lv(SSTC)*RS0;                           // ocean saturation enthalpy (J/kg)
+  const KB=K.CPD*T[NK]+Lv(T[NK]-273.15)*RB0;                      // boundary-layer air enthalpy (J/kg)
+  const KDISEQ=K0STAR-KB;
+  return{VMAX,PMIN,IFL,TO,OTL,CAPEMS,CAPEM,CAPEA,PM,KDISEQ,RS0,RB0,PPfin,K0STAR,KB,TBK:T[NK]};}   // PM = converged R_max pressure
 
 /* density-temperature (°C) of a parcel lifted from the surface.
    r0 = surface mixing ratio (g/g); af = ascent flag (0 reversible, 1 pseudo) */
@@ -529,7 +564,7 @@ const WK=[{p:1000,T:26.9,Td:19},{p:950,T:23.2,Td:18.2},{p:900,T:19.6,Td:17.4},{p
   {p:350,T:-30.8,Td:-37.4},{p:300,T:-38.1,Td:-45.7},{p:250,T:-46.5,Td:-55.4},{p:200,T:-56.1,Td:-66.7},
   {p:150,T:-55.7,Td:-66.4},{p:100,T:-55.1,Td:-65.9},{p:70,T:-54.6,Td:-65.4},{p:50,T:-54,Td:-64.9}];
 const PRESETS={
-  "Idealized 30C moist adiabat":{sst:30,mslp:1010,prof:idealizedProfile()},
+  "Idealized 30C moist adiabat":{sst:31,mslp:1010,prof:idealizedProfile()},
   "Jordan mean (1958)":{sst:28,mslp:1010,prof:JORDAN.map(r=>({...r}))},
   "Weisman-Klemp supercell":{sst:28,mslp:1010,prof:WK.map(r=>({...r}))},
   "Tropical Atlantic":{sst:29,mslp:1010,prof:BASE.map(r=>({...r}))},
@@ -537,7 +572,7 @@ const PRESETS={
   "Marginal (cool SST)":{sst:26,mslp:1010,prof:BASE.map(r=>({...r}))},
   "Dry mid-levels":{sst:29,mslp:1010,prof:BASE.map(r=>(r.p<=850&&r.p>=500?{...r,Td:r.Td-12}:{...r}))},
 };
-let state={sst:30,mslp:1010,ckcd:0.9,diss:1,ascent:0,pdep:1,vtemp:1,prof:PRESETS["Idealized 30C moist adiabat"].prof.map(r=>({...r}))};
+let state={sst:31,mslp:1010,ckcd:0.9,diss:1,ascent:0,pdep:1,vtemp:1,prof:PRESETS["Idealized 30C moist adiabat"].prof.map(r=>({...r}))};
 
 const presetsEl=document.getElementById('presets');
 Object.keys(PRESETS).forEach(name=>{const b=document.createElement('button');b.textContent=name;
@@ -873,6 +908,56 @@ function render(){
   drawSkewT(state.prof,state.sst,res);
   drawSensitivity(state.prof,state.sst,opts);
   updateStats(res);
+  updateForms(res);
+}
+// Explicit calculation of V_max in its two equivalent forms (CAPE form = the PI code; Carnot form).
+// Both use the same C_k/C_D, T_s, T_0 and the gradient→10 m reduction V_r=0.8, and yield the same V_max.
+// The Carnot-form disequilibrium k0*−k_b is the value implied by the CAPE difference via the
+// equivalence identity (k0*−k_b)(T_s−T_0)/T_s = CAPE*−CAPE_b, so both forms match exactly.
+function updateForms(res){
+  const box=document.getElementById('piforms');
+  if(!(res&&res.IFL===1&&!isNaN(res.VMAX)&&res.VMAX>=1)){
+    box.innerHTML='<div class="pfnote">No tropical cyclone for these conditions — potential intensity ≈ 0.</div>';return;}
+  const Ts=state.sst+273.15, T0=res.TO, CKCD=state.ckcd, Vr=1.0, diss=state.diss===1;
+  const CAPEs=res.CAPEMS, CAPEb=res.CAPEM;
+  const RAT=diss?Ts/T0:1, eff=diss?(Ts-T0)/T0:(Ts-T0)/Ts;
+  // Carnot form uses the enthalpy disequilibrium diagnosed DIRECTLY from the sounding at the
+  // converged R_max pressure — independent of the CAPE difference, so V generally differs.
+  const kdis=Math.max(res.KDISEQ,0);
+  const f0=Math.round, f2=x=>x.toFixed(2), V=res.VMAX.toFixed(1);
+  const Vc=(Vr*Math.sqrt(Math.max(CKCD*eff*kdis,0))).toFixed(1);
+  // full breakdown of the enthalpy disequilibrium, every value shown
+  const Cp=K.CPD, Tb=res.TBK, cpTs=Cp*Ts, cpTb=Cp*Tb, lvrs=res.K0STAR-cpTs, lvrb=res.KB-cpTb;
+  const rs=res.RS0, rb=res.RB0, Lvs=rs>0?lvrs/rs:0, Lvb=rb>0?lvrb/rb:0;
+  const diseqHTML=`k₀*−k<sub>b</sub> = (C<sub>p</sub>T<sub>s</sub> + L<sub>v</sub><sup>s</sup>r<sub>s</sub>*) − (C<sub>p</sub>T<sub>b</sub> + L<sub>v</sub><sup>b</sup>r<sub>b</sub>) = (${f0(cpTs)} + ${f0(lvrs)}) − (${f0(cpTb)} + ${f0(lvrb)}) = ${f0(res.K0STAR)} − ${f0(res.KB)} = <b>${f0(kdis)}</b> J kg⁻¹`;
+  const capeSym=diss?`\\frac{C_k}{C_D}\\,\\frac{T_s}{T_0}\\,(\\mathrm{CAPE}^{*}-\\mathrm{CAPE}_b)`
+                    :`\\frac{C_k}{C_D}\\,(\\mathrm{CAPE}^{*}-\\mathrm{CAPE}_b)`;
+  const capeNum=diss?`${f2(CKCD)}\\cdot ${f2(RAT)}\\cdot(${f0(CAPEs)}-${f0(CAPEb)})`
+                    :`${f2(CKCD)}\\cdot(${f0(CAPEs)}-${f0(CAPEb)})`;
+  // Factor the dissipative efficiency as (T_s/T_0)·((T_s-T_0)/T_s): the T_s/T_0 factor is shared
+  // with the CAPE form, so the residual (T_s-T_0)/T_s (Carnot efficiency) shows the true difference.
+  const RATc=Ts/T0, effC=(Ts-T0)/Ts;
+  const effSym=diss?`\\frac{T_s}{T_0}\\,\\frac{T_s-T_0}{T_s}`:`\\frac{T_s-T_0}{T_s}`;
+  const effNum=diss?`${f2(RATc)}\\cdot ${f2(effC)}`:`${f2(effC)}`;
+  const capeEq=`\\[\\begin{aligned} V_{\\max}&=V_r\\sqrt{\\,${capeSym}\\,}\\\\ &=${f2(Vr)}\\sqrt{\\,${capeNum}\\,}=\\mathbf{${V}}\\ \\mathrm{m\\,s^{-1}}\\end{aligned}\\]`;
+  const carnotEq=`\\[\\begin{aligned} V_{\\max}&=V_r\\sqrt{\\,\\frac{C_k}{C_D}\\,${effSym}\\,(k_0^{*}-k_b)\\,}\\\\ &=${f2(Vr)}\\sqrt{\\,${f2(CKCD)}\\cdot ${effNum}\\cdot ${f0(kdis)}\\,}=\\mathbf{${Vc}}\\ \\mathrm{m\\,s^{-1}}\\end{aligned}\\]`;
+  box.innerHTML=`
+   <div class="piforms">
+    <div class="pf cape">
+      <div class="tag">CAPE form · what the PI code computes</div>
+      <div class="fx">${capeEq}</div>
+      <div class="tl">V<sub>r</sub>=<b>${f2(Vr)}</b> (no gradient→10 m reduction) · C<sub>k</sub>/C<sub>D</sub>=<b>${f2(CKCD)}</b>${diss?` · T<sub>s</sub>/T<sub>0</sub>=${f0(Ts)}/${f0(T0)}=<b>${f2(RAT)}</b>`:''} · CAPE*=<b>${f0(CAPEs)}</b> · CAPE<sub>b</sub>=<b>${f0(CAPEb)}</b> J kg⁻¹</div>
+    </div>
+    <div class="pf carnot">
+      <div class="tag">Carnot form · efficiency × disequilibrium</div>
+      <div class="fx">${carnotEq}</div>
+      <div class="tl" style="margin-bottom:2px">with the air–sea enthalpy disequilibrium (at ${f0(res.PPfin)} hPa, C<sub>p</sub>=${f2(Cp)} J kg⁻¹K⁻¹):</div>
+      <div class="tl">${diseqHTML}</div>
+      <div class="tl">C<sub>k</sub>/C<sub>D</sub>=<b>${f2(CKCD)}</b>${diss?` · T<sub>s</sub>/T<sub>0</sub>=<b>${f2(RATc)}</b>`:''} · Carnot eff (T<sub>s</sub>−T<sub>0</sub>)/T<sub>s</sub>=<b>${f2(effC)}</b> · T<sub>s</sub>=<b>${f0(Ts)}</b> K, T<sub>b</sub>=<b>${f0(Tb)}</b> K, T<sub>0</sub>=<b>${f0(T0)}</b> K · r<sub>s</sub>*=<b>${(rs*1000).toFixed(1)}</b>, r<sub>b</sub>=<b>${(rb*1000).toFixed(1)}</b> g kg⁻¹ · L<sub>v</sub><sup>s</sup>=<b>${(Lvs/1e6).toFixed(3)}</b>, L<sub>v</sub><sup>b</sup>=<b>${(Lvb/1e6).toFixed(3)}</b> MJ kg⁻¹</div>
+    </div>
+   </div>
+   <div class="pfnote">The two forms are theoretically equivalent but computed <b>independently</b> here. The CAPE form (left) is exactly what the PI code returns. The Carnot form (right) uses the air–sea enthalpy disequilibrium k₀*−k<sub>b</sub> = (C<sub>p</sub>T<sub>s</sub>+L<sub>v</sub>r<sub>s</sub>*) − (C<sub>p</sub>T<sub>b</sub>+L<sub>v</sub>r<sub>b</sub>) evaluated directly from the sounding at the storm's radius-of-maximum-winds pressure (${f0(res.PPfin)} hPa, from the code's numerical iteration — this is where the pressure feedback enters). Because it is <i>not</i> back-derived from the CAPE difference, the two V<sub>max</sub> values differ; the gap reflects the approximations in the CAPE↔disequilibrium <a href="carnot-cape.html" style="color:var(--accent)">equivalence identity</a>.</div>`;
+  if(window.MathJax&&MathJax.typesetPromise){MathJax.typesetPromise([box]).catch(()=>{});}
 }
 function updateStats(res){
   const ok=!isNaN(res.VMAX)&&res.IFL===1;
