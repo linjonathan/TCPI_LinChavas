@@ -957,7 +957,16 @@ function updateForms(res){
     </div>
    </div>
    <div class="pfnote">The two forms are theoretically equivalent but computed <b>independently</b> here. The CAPE form (left) is exactly what the PI code returns. The Carnot form (right) uses the air–sea enthalpy disequilibrium k₀*−k<sub>b</sub> = (C<sub>p</sub>T<sub>s</sub>+L<sub>v</sub>r<sub>s</sub>*) − (C<sub>p</sub>T<sub>b</sub>+L<sub>v</sub>r<sub>b</sub>) evaluated directly from the sounding at the storm's radius-of-maximum-winds pressure (${f0(res.PPfin)} hPa, from the code's numerical iteration — this is where the pressure feedback enters). Because it is <i>not</i> back-derived from the CAPE difference, the two V<sub>max</sub> values differ; the gap reflects the approximations in the CAPE↔disequilibrium <a href="carnot-cape.html" style="color:var(--accent)">equivalence identity</a>.</div>`;
-  if(window.MathJax&&MathJax.typesetPromise){MathJax.typesetPromise([box]).catch(()=>{});}
+  typesetForms(box);
+}
+// Typeset the equations, waiting for MathJax if it hasn't finished loading yet (handles the
+// async-load race that breaks rendering under proxies like htmlpreview.github.io).
+function typesetForms(box){
+  if(window.MathJax&&MathJax.typesetPromise){MathJax.typesetPromise([box]).catch(()=>{});return;}
+  let n=0;const iv=setInterval(()=>{
+    if(window.MathJax&&MathJax.typesetPromise){clearInterval(iv);MathJax.typesetPromise([box]).catch(()=>{});}
+    else if(++n>100)clearInterval(iv);   // give up after ~10 s
+  },100);
 }
 function updateStats(res){
   const ok=!isNaN(res.VMAX)&&res.IFL===1;
