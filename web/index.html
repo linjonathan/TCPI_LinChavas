@@ -115,6 +115,12 @@
   .pf .tl{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6;font-variant-numeric:tabular-nums}
   .pf .tl b{color:var(--ink);font-weight:700}
   .pfnote{font-size:11.5px;color:var(--muted);margin-top:11px;line-height:1.5}
+  /* reconciliation block — closing the CAPE↔Carnot gap */
+  .recon{margin-top:13px;background:#eef4f7;border:1px solid #d3e3ea;border-left:4px solid var(--cool);border-radius:12px;padding:13px 15px}
+  .recon .tag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--cool)}
+  .recon .fx{font-size:13px;margin:4px 0;color:var(--ink);overflow-x:auto}
+  .recon .tl{font-size:12px;color:#2b3a47;margin-top:7px;line-height:1.6}
+  .recon .tl b{color:var(--ink)}
   /* export button */
   .btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:12.5px;font-weight:700;
     border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:9px;cursor:pointer;transition:.12s}
@@ -900,7 +906,7 @@ function render(){
     document.getElementById('pmin').textContent=res.PMIN.toFixed(0);
     document.getElementById('touts').textContent=(res.TO-273.15).toFixed(1);
     document.getElementById('otl').textContent=res.OTL.toFixed(0);
-    document.getElementById('eff').textContent=(((state.sst+273.15-res.TO)/res.TO)*100).toFixed(0)+'%';
+    document.getElementById('eff').textContent=(((state.sst+273.15-res.TO)/(state.sst+273.15))*100).toFixed(0)+'%';
     document.getElementById('catBadge').textContent=cat.name;
     document.getElementById('vmaxCard').style.background=`linear-gradient(135deg,${cat.c},${shade(cat.c,-22)})`;
     iflp.textContent='solved';flag.textContent='';
@@ -910,10 +916,11 @@ function render(){
   updateStats(res);
   updateForms(res);
 }
-// Explicit calculation of V_max in its two equivalent forms (CAPE form = the PI code; Carnot form).
-// Both use the same C_k/C_D, T_s, T_0 and the gradient→10 m reduction V_r=0.8, and yield the same V_max.
-// The Carnot-form disequilibrium k0*−k_b is the value implied by the CAPE difference via the
-// equivalence identity (k0*−k_b)(T_s−T_0)/T_s = CAPE*−CAPE_b, so both forms match exactly.
+// V_max in its two forms, computed INDEPENDENTLY: the CAPE form (what the PI code returns) and the
+// Carnot form (efficiency × the air–sea enthalpy disequilibrium k0*−k_b diagnosed from the sounding).
+// They differ, and the gap is then reconciled by restoring two terms the textbook CAPE↔Carnot
+// identity drops — irreversible entropy production and condensate loading (Rousseau-Rizzi, Merlis &
+// Jeevanjee 2022, J. Climate) — after which the two forms are shown to be nearly equivalent.
 function updateForms(res){
   const box=document.getElementById('piforms');
   if(!(res&&res.IFL===1&&!isNaN(res.VMAX)&&res.VMAX>=1)){
@@ -929,7 +936,7 @@ function updateForms(res){
   // full breakdown of the enthalpy disequilibrium, every value shown
   const Cp=K.CPD, Tb=res.TBK, cpTs=Cp*Ts, cpTb=Cp*Tb, lvrs=res.K0STAR-cpTs, lvrb=res.KB-cpTb;
   const rs=res.RS0, rb=res.RB0, Lvs=rs>0?lvrs/rs:0, Lvb=rb>0?lvrb/rb:0;
-  const diseqHTML=`k₀*−k<sub>b</sub> = (C<sub>p</sub>T<sub>s</sub> + L<sub>v</sub><sup>s</sup>r<sub>s</sub>*) − (C<sub>p</sub>T<sub>b</sub> + L<sub>v</sub><sup>b</sup>r<sub>b</sub>) = (${f0(cpTs)} + ${f0(lvrs)}) − (${f0(cpTb)} + ${f0(lvrb)}) = ${f0(res.K0STAR)} − ${f0(res.KB)} = <b>${f0(kdis)}</b> J kg⁻¹`;
+  const diseqHTML=`k₀*−k<sub>b</sub> = (C<sub>p</sub>T<sub>s</sub> + L<sub>v</sub>r<sub>s</sub>*) − (C<sub>p</sub>T<sub>b</sub> + L<sub>v</sub>r<sub>b</sub>) = <b>${f0(kdis)}</b> J kg⁻¹`;
   const capeSym=diss?`\\frac{C_k}{C_D}\\,\\frac{T_s}{T_0}\\,(\\mathrm{CAPE}^{*}-\\mathrm{CAPE}_b)`
                     :`\\frac{C_k}{C_D}\\,(\\mathrm{CAPE}^{*}-\\mathrm{CAPE}_b)`;
   const capeNum=diss?`${f2(CKCD)}\\cdot ${f2(RAT)}\\cdot(${f0(CAPEs)}-${f0(CAPEb)})`
@@ -941,22 +948,56 @@ function updateForms(res){
   const effNum=diss?`${f2(RATc)}\\cdot ${f2(effC)}`:`${f2(effC)}`;
   const capeEq=`\\[\\begin{aligned} V_{\\max}&=V_r\\sqrt{\\,${capeSym}\\,}\\\\ &=${f2(Vr)}\\sqrt{\\,${capeNum}\\,}=\\mathbf{${V}}\\ \\mathrm{m\\,s^{-1}}\\end{aligned}\\]`;
   const carnotEq=`\\[\\begin{aligned} V_{\\max}&=V_r\\sqrt{\\,\\frac{C_k}{C_D}\\,${effSym}\\,(k_0^{*}-k_b)\\,}\\\\ &=${f2(Vr)}\\sqrt{\\,${f2(CKCD)}\\cdot ${effNum}\\cdot ${f0(kdis)}\\,}=\\mathbf{${Vc}}\\ \\mathrm{m\\,s^{-1}}\\end{aligned}\\]`;
+  // ----- Reconciliation: restore the two terms the textbook CAPE↔Carnot identity drops
+  //       (Rousseau-Rizzi, Merlis & Jeevanjee 2022, J. Climate; Eqs. A6, 12) -----
+  const es0=es_cc(state.sst), ebl=ev(res.RB0,res.PPfin), Hb=ebl/es0;      // boundary-layer relative humidity
+  let dsIrr=0; if(res.RS0>0&&res.RB0>0&&Hb>0&&Hb<1){
+    dsIrr=K.RV*(res.RB0*Math.log(Hb)+K.EPS*Math.log(res.RS0*Hb/res.RB0)); if(!(dsIrr>=0))dsIrr=0;}
+  const Vc2=Math.max(CKCD*eff*kdis,0);                    // uncorrected Carnot V^2 (m^2 s^-2)
+  const dV2irr=CKCD*Ts*dsIrr;                             // irreversible-entropy-production correction
+  let dV2load=0;                                          // condensate-loading correction (reversible ascent only)
+  if(state.ascent===0){
+    const Pc=state.prof.map(r=>r.p),Tc=state.prof.map(r=>r.T),Rc=state.prof.map(r=>mixingRatio(r.Td,r.p));
+    const rp=pi(state.sst,state.mslp,Pc,Tc,Rc,{CKCD:CKCD,ascent_flag:1,diss_flag:state.diss,pressDep:state.pdep===1});
+    if(rp&&rp.IFL===1&&!isNaN(rp.VMAX))dV2load=Math.max(rp.VMAX*rp.VMAX-res.VMAX*res.VMAX,0);}
+  const Vcarnot=Math.sqrt(Vc2), Vcorr=Math.sqrt(Math.max(Vc2-dV2irr-dV2load,0));
+  const rawgap=Vcarnot-res.VMAX, resid=Vcorr-res.VMAX, f1=x=>x.toFixed(1);
+  const dsIrrEq=`\\[ \\Delta s_{\\mathrm{irr}}=R_v\\Big[r_b\\ln\\mathcal{H}_b+\\varepsilon\\ln\\tfrac{r_s^{*}\\mathcal{H}_b}{r_b}\\Big]=${dsIrr.toFixed(3)}\\ \\mathrm{J\\,kg^{-1}K^{-1}} \\]`;
+  const loadPart=dV2load>0?`-\\underbrace{\\Delta V^2_{\\mathrm{load}}}_{${f0(dV2load)}}`:``;
+  const corrEq=`\\[ V_{\\max}^{\\text{corr}}=\\sqrt{\\,\\underbrace{V_{\\max}^{2}}_{${f0(Vc2)}}-\\underbrace{\\tfrac{C_k}{C_D}T_s\\,\\Delta s_{\\mathrm{irr}}}_{${f0(dV2irr)}}${loadPart}\\,}=\\mathbf{${f1(Vcorr)}}\\ \\mathrm{m\\,s^{-1}} \\]`;
   box.innerHTML=`
    <div class="piforms">
     <div class="pf cape">
-      <div class="tag">CAPE form · what the PI code computes</div>
+      <div class="tag">CAPE form: What the PI code computes</div>
       <div class="fx">${capeEq}</div>
-      <div class="tl">V<sub>r</sub>=<b>${f2(Vr)}</b> (no gradient→10 m reduction) · C<sub>k</sub>/C<sub>D</sub>=<b>${f2(CKCD)}</b>${diss?` · T<sub>s</sub>/T<sub>0</sub>=${f0(Ts)}/${f0(T0)}=<b>${f2(RAT)}</b>`:''} · CAPE*=<b>${f0(CAPEs)}</b> · CAPE<sub>b</sub>=<b>${f0(CAPEb)}</b> J kg⁻¹</div>
+        <div class="tl">V<sub>r</sub>=<b>${f2(Vr)}</b> (no gradient wind to 10m wind reduction)</div>
+      <div class="tl">C<sub>k</sub>/C<sub>D</sub>=<b>${f2(CKCD)}</b>${diss?`, T<sub>s</sub>=<b>${f0(Ts)}</b> K, T<sub>0</sub>=<b>${f0(T0)}</b> K, T<sub>s</sub>/T<sub>0</sub>=${f0(Ts)}/${f0(T0)}=<b>${f2(RAT)}</b>`:''}</div>
+      <div class="tl">CAPE*=<b>${f0(CAPEs)}</b> J kg⁻¹, CAPE<sub>b</sub>=<b>${f0(CAPEb)}</b> J kg⁻¹</div>
     </div>
     <div class="pf carnot">
-      <div class="tag">Carnot form · efficiency × disequilibrium</div>
+      <div class="tag">Carnot form: efficiency × disequilibrium</div>
       <div class="fx">${carnotEq}</div>
-      <div class="tl" style="margin-bottom:2px">with the air–sea enthalpy disequilibrium (at ${f0(res.PPfin)} hPa, C<sub>p</sub>=${f2(Cp)} J kg⁻¹K⁻¹):</div>
-      <div class="tl">${diseqHTML}</div>
-      <div class="tl">C<sub>k</sub>/C<sub>D</sub>=<b>${f2(CKCD)}</b>${diss?` · T<sub>s</sub>/T<sub>0</sub>=<b>${f2(RATc)}</b>`:''} · Carnot eff (T<sub>s</sub>−T<sub>0</sub>)/T<sub>s</sub>=<b>${f2(effC)}</b> · T<sub>s</sub>=<b>${f0(Ts)}</b> K, T<sub>b</sub>=<b>${f0(Tb)}</b> K, T<sub>0</sub>=<b>${f0(T0)}</b> K · r<sub>s</sub>*=<b>${(rs*1000).toFixed(1)}</b>, r<sub>b</sub>=<b>${(rb*1000).toFixed(1)}</b> g kg⁻¹ · L<sub>v</sub><sup>s</sup>=<b>${(Lvs/1e6).toFixed(3)}</b>, L<sub>v</sub><sup>b</sup>=<b>${(Lvb/1e6).toFixed(3)}</b> MJ kg⁻¹</div>
+      <div class="tl" style="margin-bottom:2px">computed at the radius of maximum wind (${f0(res.PPfin)} hPa).</div>
+      <div class="tl">V<sub>r</sub>=<b>${f2(Vr)}</b> (no gradient wind to 10m wind reduction)</div>
+      <div class="tl">C<sub>k</sub>/C<sub>D</sub>=<b>${f2(CKCD)}</b>${diss?`, T<sub>s</sub>=<b>${f0(Ts)}</b> K, T<sub>b</sub>=<b>${f0(Tb)}</b> K, T<sub>0</sub>=<b>${f0(T0)}</b> K, T<sub>s</sub>/T<sub>0</sub>=<b>${f2(RATc)}</b>`:''}</div>
+      <div class="tl">Carnot efficiency: (T<sub>s</sub>−T<sub>0</sub>)/T<sub>s</sub>=<b>${f2(effC)}</b></div>
+      <div class="tl">${diseqHTML}</div>      
     </div>
    </div>
-   <div class="pfnote">The two forms are theoretically equivalent but computed <b>independently</b> here. The CAPE form (left) is exactly what the PI code returns. The Carnot form (right) uses the air–sea enthalpy disequilibrium k₀*−k<sub>b</sub> = (C<sub>p</sub>T<sub>s</sub>+L<sub>v</sub>r<sub>s</sub>*) − (C<sub>p</sub>T<sub>b</sub>+L<sub>v</sub>r<sub>b</sub>) evaluated directly from the sounding at the storm's radius-of-maximum-winds pressure (${f0(res.PPfin)} hPa, from the code's numerical iteration — this is where the pressure feedback enters). Because it is <i>not</i> back-derived from the CAPE difference, the two V<sub>max</sub> values differ; the gap reflects the approximations in the CAPE↔disequilibrium <a href="carnot-cape.html" style="color:var(--accent)">equivalence identity</a>.</div>`;
+   <div class="pfnote">Note that both forms use V<sub>r</sub>=1, and the same C<sub>k</sub>/C<sub>D</sub>, T<sub>s</sub>, T<sub>0</sub>. Both should be thought of as constants that modify the potential intensity. The CAPE form (left) is exactly what the PI code returns; the Carnot form (right) is built from the air–sea enthalpy disequilibrium k₀*−k<sub>b</sub> diagnosed directly from the sounding at the radius-of-maximum-winds pressure (${f0(res.PPfin)} hPa). The two can differ because of irreversible processes, as outlined below.</div>
+   <div class="recon">
+     <div class="tag">Closing the gap — the terms the equivalence usually drops</div>
+     <div class="tl" style="margin-top:6px">Computed independently, the two forms differ by <b>${f1(Math.abs(rawgap))}</b> m s⁻¹. We can restore the terms that the classical CAPE to Carnot identity typically drops:</div>
+     <div class="tl"><b>①&nbsp; Irreversible entropy production.</b> Evaporating ocean water into the unsaturated inflow in the boundary layer (\\(\\mathcal{H}_b=${Hb>0&&Hb<1?Hb.toFixed(2):'—'}\\)) is irreversible; the classical derivation assumes phase equilibrium and drops it. It removes \\(\\tfrac{C_k}{C_D}T_s\\Delta s_{\\mathrm{irr}}=${f0(dV2irr)}\\) m²s⁻² from the squared wind speed.</div>
+     <div class="fx">${dsIrrEq}</div>
+     ${dV2load>0
+       ?`<div class="tl"><b>②&nbsp; Condensate (water) loading.</b> Under <i>reversible</i> ascent the saturated parcel carries its condensed water, whose weight lowers the squared wind speed by \\(\\Delta V^2_{\\mathrm{load}}=${f0(dV2load)}\\) m²s⁻². </div>`
+       :`<div class="tl"><b>②&nbsp; Condensate loading = 0.</b> Pseudoadiabatic ascent sheds condensed water, so the CAPE form does not have water loading and this term drops out. Switch ascent to <i>Reversible</i> to see it appear.</div>`}
+     <div class="fx" style="margin-top:6px">${corrEq}</div>
+     <div class="tl" style="margin-top:6px">The Carnot-form Potential Intensity: <b>${f1(Vcorr)}</b> m s⁻¹</div>
+     <div class="tl" style="margin-top:2px">The CAPE-form Potential Intensity: <b>${f1(res.VMAX)}</b> m s⁻¹.</div>
+     <div class="tl" style="margin-top:2px">The residual <b>${f1(Math.abs(resid))}</b> m s⁻¹. <a href="carnot-cape.html" style="color:var(--accent)">Theory ↗</a></div>
+   </div>`;
   typesetForms(box);
 }
 // Typeset the equations, waiting for MathJax if it hasn't finished loading yet (handles the
