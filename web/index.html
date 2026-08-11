@@ -155,12 +155,7 @@
 <header class="hero">
   <div class="eyebrow">Tropical Meteorology · Interactive Sounding</div>
   <h1>How Potential Intensity is Read from a Sounding</h1>
-  <p class="sub">Potential intensity (PI) is a hurricane's speed limit — the maximum near-surface wind
-  speed a tropical cyclone could reach in a given ocean and atmosphere (Emanuel 1986; Rousseau-Rizzi &amp;
-  Emanuel 2019). The idea is elegant: a hurricane runs as a heat engine on the warmth of the sea, and the
-  energy it can draw from the air–sea temperature and moisture contrast sets a ceiling on how strong its
-  winds can get. This tool computes PI from an editable sounding and draws the construction behind it —
-  adjust any control and the sounding, and every quantity on it, updates instantly.</p>
+  <p class="sub">Potential intensity (PI) is a hurricane's speed limit — the maximum near-surface wind speed a tropical cyclone could reach in a given ocean and atmosphere (Emanuel 1986; Rousseau-Rizzi &amp; Emanuel 2019). The idea is elegant: a hurricane runs as a heat engine on the warmth of the sea, and the energy it can draw from the air–sea temperature and moisture contrast sets a ceiling on how strong its winds can get. This tool computes PI from an editable sounding and outlines the construction behind it. Feel free to adjust any control and the sounding.</p>
   <p style="margin-top:10px"><a href="carnot-cape.html" style="display:inline-flex;align-items:center;gap:7px;
     font-size:13.5px;font-weight:700;color:var(--accent);text-decoration:none;border:1px solid var(--line);
     background:var(--panel);border-radius:20px;padding:7px 15px;box-shadow:var(--shadow)">
@@ -984,7 +979,7 @@ function updateForms(res){
       <div class="tl">${diseqHTML}</div>      
     </div>
    </div>
-   <div class="pfnote">Note that both forms use V<sub>r</sub>=1, and the same C<sub>k</sub>/C<sub>D</sub>, T<sub>s</sub>, T<sub>0</sub>. Both should be thought of as constants that modify the potential intensity. The CAPE form (left) is exactly what the PI code returns; the Carnot form (right) is built from the air–sea enthalpy disequilibrium k₀*−k<sub>b</sub> diagnosed directly from the sounding at the radius-of-maximum-winds pressure (${f0(res.PPfin)} hPa). The two can differ because of irreversible processes, as outlined below.</div>
+   <div class="pfnote">Note that both forms use V<sub>r</sub>=1, and the same C<sub>k</sub>/C<sub>D</sub>, T<sub>s</sub>, T<sub>0</sub>. Both should be thought of as constants that modify the potential intensity. The CAPE form (left) is exactly what the PI code returns; the Carnot form (right) is built from the air–sea enthalpy disequilibrium k₀*−k<sub>b</sub> diagnosed directly from the sounding at the radius-of-maximum-winds pressure (${f0(res.PPfin)} hPa). The two can differ because of additional terms, as outlined below.</div>
    <div class="recon">
      <div class="tag">Closing the gap — the terms the equivalence usually drops</div>
      <div class="tl" style="margin-top:6px">Computed independently, the two forms differ by <b>${f1(Math.abs(rawgap))}</b> m s⁻¹. We can restore the terms that the classical CAPE to Carnot identity typically drops:</div>
